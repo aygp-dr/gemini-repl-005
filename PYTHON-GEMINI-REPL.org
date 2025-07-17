@@ -7,7 +7,7 @@
 
 ** Overview Diagram
 
-#+begin_src mermaid :file architecture.png :exports results
+#+begin_src mermaid :file architecture.png :exports results :tangle architecture.mmd
 graph TB
     subgraph "Core Components"
         REPL[REPL Event Loop]
@@ -48,9 +48,12 @@ graph TB
     Gemini --> |responses| API
 #+end_src
 
+#+RESULTS:
+[[file:architecture.png]]
+
 ** Component Flow
 
-#+begin_src mermaid :file flow.png :exports results
+#+begin_src mermaid :file flow.png :exports results :tangle flow.mmd
 sequenceDiagram
     participant User
     participant REPL
@@ -76,6 +79,9 @@ sequenceDiagram
     REPL->>Logger: Log response
     REPL->>User: Display output
 #+end_src
+
+#+RESULTS:
+[[file:flow.png]]
 
 * Directory Structure
 
