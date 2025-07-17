@@ -1,0 +1,38 @@
+## Cleaned Up Prompts
+
+### Original Prompt (from GEMINI-REPL-PROMPTS.org)
+"Use Python instead of ClojureScript and see how close we can get to a one-shot for:
+1) Core REPL event loop
+2) Logging
+3) Context
+4) Tool use (r/w files)
+5) Self hosting"
+
+### Issues Noted During Implementation
+- The org-mode file had backup files (.org~) that needed to be gitignored
+- Mermaid diagrams initially lacked :tangle directives for .mmd output
+- Co-author attribution needed to use --trailer instead of commit body
+
+### Testing Applied
+- Created comprehensive test suite in tests/test_repl.py
+- Tests cover: context management, logging, tool system, and REPL commands
+- Mocked external dependencies (Gemini API) for unit testing
+- Added CI/CD pipeline with GitHub Actions
+
+### Implementation Highlights
+- Modular architecture with clear separation of concerns
+- Event-driven REPL with slash commands
+- JSON-formatted logging with FIFO support for real-time monitoring
+- Token-aware context management with automatic trimming
+- Sandboxed Python execution for safety
+- Self-modification capabilities with backup and restart functionality
+
+### Next Steps
+1. Add more sophisticated tool functions (web scraping, data analysis)
+2. Implement conversation branching and checkpointing
+3. Add support for multiple AI providers beyond Gemini
+4. Create a web interface for remote access
+5. Add plugin system for extensibility
+6. Implement conversation templates and macros
+7. Add support for multi-modal inputs (images, audio)
+8. Create comprehensive documentation with examples
