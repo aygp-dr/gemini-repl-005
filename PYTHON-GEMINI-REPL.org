@@ -1,0 +1,1563 @@
+#+TITLE: Python Gemini REPL - One-Shot Implementation
+#+AUTHOR: AI Assistant
+#+DATE: 2025-01-17
+#+PROPERTY: header-args :mkdirp yes
+
+* System Architecture
+
+** Overview Diagram
+
+#+begin_src mermaid :file architecture.png :exports results
+graph TB
+    subgraph "Core Components"
+        REPL[REPL Event Loop]
+        CTX[Context Manager]
+        LOG[Logger]
+        API[Gemini API Client]
+        TOOLS[Tool System]
+    end
+    
+    subgraph "Tool Functions"
+        READ[File Reader]
+        WRITE[File Writer]
+        SELF[Self-Modify]
+    end
+    
+    subgraph "Storage"
+        HIST[conversation.json]
+        LOGS[logs/gemini.log]
+        FILES[workspace/]
+    end
+    
+    REPL --> CTX
+    REPL --> LOG
+    REPL --> API
+    REPL --> TOOLS
+    
+    TOOLS --> READ
+    TOOLS --> WRITE
+    TOOLS --> SELF
+    
+    CTX --> HIST
+    LOG --> LOGS
+    READ --> FILES
+    WRITE --> FILES
+    SELF --> FILES
+    
+    API --> |requests| Gemini[Gemini API]
+    Gemini --> |responses| API
+#+end_src
+
+** Component Flow
+
+#+begin_src mermaid :file flow.png :exports results
+sequenceDiagram
+    participant User
+    participant REPL
+    participant Context
+    participant Logger
+    participant API
+    participant Tools
+    
+    User->>REPL: Input command
+    REPL->>Logger: Log input
+    REPL->>Context: Add to history
+    
+    alt Slash Command
+        REPL->>REPL: Handle command
+    else API Request
+        REPL->>API: Send with context
+        API->>Tools: Check for tool calls
+        Tools-->>API: Execute if needed
+        API-->>REPL: Return response
+    end
+    
+    REPL->>Context: Update history
+    REPL->>Logger: Log response
+    REPL->>User: Display output
+#+end_src
+
+* Directory Structure
+
+#+begin_src bash :tangle setup.sh
+#!/bin/bash
+# Create project structure
+mkdir -p src/gemini_repl/{core,tools,utils}
+mkdir -p logs
+mkdir -p workspace
+mkdir -p tests
+mkdir -p docs
+mkdir -p .github/workflows
+touch src/gemini_repl/__init__.py
+touch src/gemini_repl/core/__init__.py
+touch src/gemini_repl/tools/__init__.py
+touch src/gemini_repl/utils/__init__.py
+#+end_src
+
+* Environment Configuration
+
+#+begin_src bash :tangle .env.example
+# Gemini API Configuration
+GEMINI_API_KEY=your-api-key-here
+GEMINI_MODEL=gemini-2.0-flash-exp
+
+# Logging Configuration
+LOG_LEVEL=INFO
+LOG_FILE=logs/gemini.log
+LOG_FORMAT=json
+
+# Context Configuration
+CONTEXT_FILE=conversation.json
+MAX_CONTEXT_TOKENS=100000
+
+# Tool Configuration
+WORKSPACE_DIR=workspace
+ENABLE_SELF_MODIFY=true
+#+end_src
+
+#+begin_src python :tangle .envrc
+#!/usr/bin/env python3
+import os
+from pathlib import Path
+
+# Load .env if it exists
+env_file = Path('.env')
+if env_file.exists():
+    with open(env_file) as f:
+        for line in f:
+            if line.strip() and not line.startswith('#'):
+                key, value = line.strip().split('=', 1)
+                os.environ[key] = value
+#+end_src
+
+* Core Implementation
+
+** Main Entry Point
+
+#+begin_src python :tangle src/gemini_repl/__main__.py
+#!/usr/bin/env python3
+"""Main entry point for Gemini REPL."""
+import sys
+from gemini_repl.core.repl import GeminiREPL
+
+def main():
+    repl = GeminiREPL()
+    try:
+        repl.run()
+    except KeyboardInterrupt:
+        print("\n\nExiting...")
+        sys.exit(0)
+    except Exception as e:
+        print(f"\nError: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+#+end_src
+
+** REPL Event Loop
+
+#+begin_src python :tangle src/gemini_repl/core/repl.py
+"""Core REPL implementation with event loop."""
+import os
+import sys
+import json
+import readline
+from pathlib import Path
+from typing import Optional, Dict, Any, List
+from datetime import datetime
+
+from ..utils.logger import Logger
+from ..utils.context import ContextManager
+from .api_client import GeminiClient
+from ..tools.tool_system import ToolSystem
+
+
+class GeminiREPL:
+    """Main REPL class implementing the event loop."""
+    
+    def __init__(self):
+        self.logger = Logger()
+        self.context = ContextManager()
+        self.client = GeminiClient()
+        self.tools = ToolSystem(self)
+        self.running = True
+        self.commands = self._init_commands()
+        
+        # Initialize readline for better input handling
+        readline.parse_and_bind('tab: complete')
+        self._load_history()
+        
+    def _init_commands(self) -> Dict[str, callable]:
+        """Initialize slash commands."""
+        return {
+            '/help': self.cmd_help,
+            '/exit': self.cmd_exit,
+            '/quit': self.cmd_exit,
+            '/clear': self.cmd_clear,
+            '/context': self.cmd_context,
+            '/stats': self.cmd_stats,
+            '/save': self.cmd_save,
+            '/load': self.cmd_load,
+            '/tools': self.cmd_tools,
+            '/workspace': self.cmd_workspace,
+            '/debug': self.cmd_debug,
+        }
+    
+    def _load_history(self):
+        """Load command history."""
+        history_file = Path.home() / '.gemini_repl_history'
+        try:
+            readline.read_history_file(history_file)
+        except FileNotFoundError:
+            pass
+    
+    def _save_history(self):
+        """Save command history."""
+        history_file = Path.home() / '.gemini_repl_history'
+        readline.write_history_file(history_file)
+    
+    def _display_banner(self):
+        """Display the REPL banner."""
+        banner = """
+╔══════════════════════════════════════╗
+║        🌟 Gemini REPL v1.0 🌟        ║
+║  Python-powered AI conversations     ║
+║  Type /help for available commands   ║
+╚══════════════════════════════════════╝
+"""
+        print(banner)
+    
+    def run(self):
+        """Main event loop."""
+        self._display_banner()
+        self.logger.info("REPL started", {"timestamp": datetime.now().isoformat()})
+        
+        while self.running:
+            try:
+                # Get user input
+                prompt = self._get_prompt()
+                user_input = input(prompt).strip()
+                
+                if not user_input:
+                    continue
+                
+                # Log input
+                self.logger.debug("User input", {"input": user_input})
+                
+                # Handle slash commands
+                if user_input.startswith('/'):
+                    self._handle_command(user_input)
+                else:
+                    # Handle API request
+                    self._handle_api_request(user_input)
+                    
+            except EOFError:
+                self.cmd_exit()
+            except KeyboardInterrupt:
+                print("\nUse /exit to quit")
+                continue
+            except Exception as e:
+                self.logger.error("REPL error", {"error": str(e)})
+                print(f"Error: {e}")
+        
+        self._save_history()
+        self.logger.info("REPL stopped")
+    
+    def _get_prompt(self) -> str:
+        """Generate the prompt string."""
+        tokens = self.context.get_token_count()
+        return f"\n[{tokens} tokens] > "
+    
+    def _handle_command(self, command: str):
+        """Handle slash commands."""
+        parts = command.split(maxsplit=1)
+        cmd = parts[0].lower()
+        args = parts[1] if len(parts) > 1 else ""
+        
+        if cmd in self.commands:
+            self.commands[cmd](args)
+        else:
+            print(f"Unknown command: {cmd}")
+            print("Type /help for available commands")
+    
+    def _handle_api_request(self, user_input: str):
+        """Handle API request with context and tools."""
+        try:
+            # Add to context
+            self.context.add_message("user", user_input)
+            
+            # Get response with tools
+            response = self.client.send_message(
+                self.context.get_messages(),
+                tools=self.tools.get_tool_definitions()
+            )
+            
+            # Handle tool calls if present
+            if hasattr(response, 'candidates') and response.candidates:
+                candidate = response.candidates[0]
+                if hasattr(candidate.content, 'parts'):
+                    for part in candidate.content.parts:
+                        if hasattr(part, 'function_call'):
+                            # Execute tool
+                            tool_response = self.tools.execute_tool(
+                                part.function_call.name,
+                                part.function_call.args
+                            )
+                            # Add tool response to context
+                            self.context.add_tool_response(
+                                part.function_call.name,
+                                tool_response
+                            )
+            
+            # Extract text response
+            response_text = self._extract_response_text(response)
+            
+            # Add to context
+            self.context.add_message("assistant", response_text)
+            
+            # Display response with metadata
+            self._display_response(response_text, response)
+            
+        except Exception as e:
+            self.logger.error("API request failed", {"error": str(e)})
+            print(f"Error: {e}")
+    
+    def _extract_response_text(self, response) -> str:
+        """Extract text from API response."""
+        if hasattr(response, 'text'):
+            return response.text
+        elif hasattr(response, 'candidates') and response.candidates:
+            candidate = response.candidates[0]
+            if hasattr(candidate.content, 'parts'):
+                texts = []
+                for part in candidate.content.parts:
+                    if hasattr(part, 'text'):
+                        texts.append(part.text)
+                return '\n'.join(texts)
+        return "No response text found"
+    
+    def _display_response(self, text: str, response):
+        """Display response with metadata."""
+        # Display the response text
+        print(f"\n{text}")
+        
+        # Display metadata
+        metadata = self._extract_metadata(response)
+        if metadata:
+            meta_str = f"[🟢 {metadata['tokens']} tokens | ${metadata['cost']:.4f} | {metadata['time']:.1f}s]"
+            print(f"\n{meta_str}")
+    
+    def _extract_metadata(self, response) -> Optional[Dict[str, Any]]:
+        """Extract metadata from response."""
+        try:
+            metadata = {}
+            
+            # Token usage
+            if hasattr(response, 'usage_metadata'):
+                metadata['tokens'] = response.usage_metadata.total_token_count
+                # Rough cost estimate (adjust based on actual pricing)
+                metadata['cost'] = metadata['tokens'] * 0.000001
+            else:
+                metadata['tokens'] = 0
+                metadata['cost'] = 0
+            
+            # Response time (would need to track this in api_client)
+            metadata['time'] = 0.5  # Placeholder
+            
+            return metadata
+        except:
+            return None
+    
+    # Command implementations
+    def cmd_help(self, args: str):
+        """Display help information."""
+        help_text = """
+Available Commands:
+  /help         - Show this help message
+  /exit, /quit  - Exit the REPL
+  /clear        - Clear the screen
+  /context      - Show conversation context
+  /stats        - Show usage statistics
+  /save [file]  - Save conversation to file
+  /load [file]  - Load conversation from file
+  /tools        - List available tools
+  /workspace    - Show workspace contents
+  /debug        - Toggle debug mode
+
+Tool Functions:
+  The AI can read, write, and modify files in the workspace directory.
+  Ask it to create, edit, or analyze files for you.
+"""
+        print(help_text)
+    
+    def cmd_exit(self, args: str = ""):
+        """Exit the REPL."""
+        print("\nGoodbye! 👋")
+        self.running = False
+    
+    def cmd_clear(self, args: str):
+        """Clear the screen."""
+        os.system('clear' if os.name == 'posix' else 'cls')
+        self._display_banner()
+    
+    def cmd_context(self, args: str):
+        """Display conversation context."""
+        messages = self.context.get_messages()
+        print("\n=== Conversation Context ===")
+        for msg in messages[-10:]:  # Show last 10 messages
+            role = msg['role'].upper()
+            content = msg['content'][:100] + "..." if len(msg['content']) > 100 else msg['content']
+            print(f"{role}: {content}")
+        print(f"\nTotal messages: {len(messages)}")
+        print(f"Total tokens: {self.context.get_token_count()}")
+    
+    def cmd_stats(self, args: str):
+        """Display usage statistics."""
+        stats = self.context.get_stats()
+        print("\n=== Usage Statistics ===")
+        print(f"Messages: {stats['message_count']}")
+        print(f"Tokens: {stats['token_count']}")
+        print(f"Estimated cost: ${stats['estimated_cost']:.4f}")
+        print(f"Session duration: {stats['duration']}")
+    
+    def cmd_save(self, args: str):
+        """Save conversation to file."""
+        filename = args.strip() or f"conversation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        path = Path('workspace') / filename
+        self.context.save_to_file(path)
+        print(f"Conversation saved to: {path}")
+    
+    def cmd_load(self, args: str):
+        """Load conversation from file."""
+        if not args:
+            print("Usage: /load <filename>")
+            return
+        path = Path('workspace') / args.strip()
+        if path.exists():
+            self.context.load_from_file(path)
+            print(f"Conversation loaded from: {path}")
+        else:
+            print(f"File not found: {path}")
+    
+    def cmd_tools(self, args: str):
+        """List available tools."""
+        tools = self.tools.get_tool_definitions()
+        print("\n=== Available Tools ===")
+        for tool in tools:
+            print(f"- {tool.name}: {tool.description}")
+    
+    def cmd_workspace(self, args: str):
+        """Show workspace contents."""
+        workspace = Path('workspace')
+        if not workspace.exists():
+            print("Workspace directory does not exist")
+            return
+        
+        print("\n=== Workspace Contents ===")
+        for item in sorted(workspace.iterdir()):
+            size = item.stat().st_size if item.is_file() else '-'
+            print(f"{'📄' if item.is_file() else '📁'} {item.name:30} {size:>10}")
+    
+    def cmd_debug(self, args: str):
+        """Toggle debug mode."""
+        current = self.logger.logger.level
+        new_level = 'DEBUG' if current != 10 else 'INFO'  # 10 is DEBUG level
+        self.logger.set_level(new_level)
+        print(f"Debug mode: {'ON' if new_level == 'DEBUG' else 'OFF'}")
+#+end_src
+
+** API Client
+
+#+begin_src python :tangle src/gemini_repl/core/api_client.py
+"""Gemini API client implementation."""
+import os
+import json
+from typing import List, Dict, Any, Optional
+import google.generativeai as genai
+from google.generativeai.types import GenerateContentResponse
+
+
+class GeminiClient:
+    """Client for interacting with Gemini API."""
+    
+    def __init__(self):
+        api_key = os.getenv('GEMINI_API_KEY')
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY not set in environment")
+        
+        genai.configure(api_key=api_key)
+        self.model_name = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash-exp')
+        self.model = genai.GenerativeModel(
+            self.model_name,
+            generation_config={
+                'temperature': 0.7,
+                'top_p': 0.95,
+                'top_k': 40,
+                'max_output_tokens': 8192,
+            }
+        )
+    
+    def send_message(self, messages: List[Dict[str, str]], 
+                    tools: Optional[List[Any]] = None) -> GenerateContentResponse:
+        """Send message to Gemini API with optional tools."""
+        # Convert messages to Gemini format
+        gemini_messages = self._convert_messages(messages)
+        
+        # Configure model with tools if provided
+        if tools:
+            self.model = genai.GenerativeModel(
+                self.model_name,
+                tools=tools,
+                generation_config={
+                    'temperature': 0.7,
+                    'top_p': 0.95,
+                    'top_k': 40,
+                    'max_output_tokens': 8192,
+                }
+            )
+        
+        # Send request
+        try:
+            if len(gemini_messages) == 1:
+                response = self.model.generate_content(gemini_messages[0])
+            else:
+                # Use chat for multi-turn conversations
+                chat = self.model.start_chat(history=gemini_messages[:-1])
+                response = chat.send_message(gemini_messages[-1])
+            
+            return response
+            
+        except Exception as e:
+            raise Exception(f"API request failed: {e}")
+    
+    def _convert_messages(self, messages: List[Dict[str, str]]) -> List[str]:
+        """Convert internal message format to Gemini format."""
+        gemini_messages = []
+        
+        for msg in messages:
+            role = msg['role']
+            content = msg['content']
+            
+            # Gemini uses a simpler format
+            if role == 'user':
+                gemini_messages.append(content)
+            elif role == 'assistant':
+                gemini_messages.append(content)
+            elif role == 'tool':
+                # Handle tool responses
+                gemini_messages.append(f"Tool response: {content}")
+        
+        return gemini_messages
+#+end_src
+
+* Logging System
+
+#+begin_src python :tangle src/gemini_repl/utils/logger.py
+"""Logging system with file and console output."""
+import os
+import sys
+import json
+import logging
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, Any, Optional
+
+
+class Logger:
+    """Custom logger with JSON formatting and multiple outputs."""
+    
+    def __init__(self):
+        self.log_level = os.getenv('LOG_LEVEL', 'INFO')
+        self.log_file = os.getenv('LOG_FILE', 'logs/gemini.log')
+        self.log_format = os.getenv('LOG_FORMAT', 'json')
+        
+        # Ensure log directory exists
+        Path(self.log_file).parent.mkdir(parents=True, exist_ok=True)
+        
+        # Create logger
+        self.logger = logging.getLogger('gemini_repl')
+        self.logger.setLevel(getattr(logging, self.log_level))
+        
+        # Remove existing handlers
+        self.logger.handlers.clear()
+        
+        # Add file handler
+        if self.log_file:
+            file_handler = logging.FileHandler(self.log_file)
+            file_handler.setFormatter(self._get_formatter())
+            self.logger.addHandler(file_handler)
+        
+        # Add console handler for errors
+        console_handler = logging.StreamHandler(sys.stderr)
+        console_handler.setLevel(logging.ERROR)
+        console_handler.setFormatter(self._get_formatter())
+        self.logger.addHandler(console_handler)
+        
+        # FIFO support (optional)
+        self.fifo_path = '/tmp/gemini-repl.fifo'
+        self._setup_fifo()
+    
+    def _get_formatter(self):
+        """Get appropriate formatter based on format setting."""
+        if self.log_format == 'json':
+            return JsonFormatter()
+        else:
+            return logging.Formatter(
+                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            )
+    
+    def _setup_fifo(self):
+        """Setup FIFO for real-time log monitoring."""
+        try:
+            if os.path.exists(self.fifo_path):
+                os.unlink(self.fifo_path)
+            os.mkfifo(self.fifo_path)
+        except:
+            # FIFO is optional, ignore errors
+            pass
+    
+    def _log_to_fifo(self, record: Dict[str, Any]):
+        """Write log record to FIFO if available."""
+        try:
+            if os.path.exists(self.fifo_path):
+                with open(self.fifo_path, 'w') as f:
+                    f.write(json.dumps(record) + '\n')
+        except:
+            pass
+    
+    def set_level(self, level: str):
+        """Change log level at runtime."""
+        self.logger.setLevel(getattr(logging, level))
+        self.log_level = level
+    
+    # Logging methods
+    def debug(self, message: str, data: Optional[Dict[str, Any]] = None):
+        """Log debug message."""
+        self._log('DEBUG', message, data)
+    
+    def info(self, message: str, data: Optional[Dict[str, Any]] = None):
+        """Log info message."""
+        self._log('INFO', message, data)
+    
+    def warning(self, message: str, data: Optional[Dict[str, Any]] = None):
+        """Log warning message."""
+        self._log('WARNING', message, data)
+    
+    def error(self, message: str, data: Optional[Dict[str, Any]] = None):
+        """Log error message."""
+        self._log('ERROR', message, data)
+    
+    def _log(self, level: str, message: str, data: Optional[Dict[str, Any]] = None):
+        """Internal logging method."""
+        record = {
+            'timestamp': datetime.now().isoformat(),
+            'level': level,
+            'message': message,
+            'data': data or {}
+        }
+        
+        # Log to file/console
+        log_method = getattr(self.logger, level.lower())
+        if self.log_format == 'json':
+            log_method(json.dumps(record))
+        else:
+            log_method(f"{message} - {json.dumps(data) if data else ''}")
+        
+        # Log to FIFO
+        self._log_to_fifo(record)
+
+
+class JsonFormatter(logging.Formatter):
+    """JSON formatter for structured logging."""
+    
+    def format(self, record):
+        log_obj = {
+            'timestamp': datetime.fromtimestamp(record.created).isoformat(),
+            'level': record.levelname,
+            'logger': record.name,
+            'message': record.getMessage(),
+            'module': record.module,
+            'line': record.lineno
+        }
+        return json.dumps(log_obj)
+#+end_src
+
+* Context Management
+
+#+begin_src python :tangle src/gemini_repl/utils/context.py
+"""Context management for conversation history."""
+import os
+import json
+from pathlib import Path
+from datetime import datetime, timedelta
+from typing import List, Dict, Any, Optional
+import tiktoken
+
+
+class ContextManager:
+    """Manage conversation context and history."""
+    
+    def __init__(self):
+        self.context_file = os.getenv('CONTEXT_FILE', 'conversation.json')
+        self.max_tokens = int(os.getenv('MAX_CONTEXT_TOKENS', '100000'))
+        self.messages: List[Dict[str, Any]] = []
+        self.session_start = datetime.now()
+        
+        # Token counter (using tiktoken for estimation)
+        try:
+            self.encoder = tiktoken.encoding_for_model("gpt-4")
+        except:
+            self.encoder = tiktoken.get_encoding("cl100k_base")
+        
+        # Load existing context if available
+        self._load_context()
+    
+    def _load_context(self):
+        """Load context from file if it exists."""
+        if os.path.exists(self.context_file):
+            try:
+                with open(self.context_file, 'r') as f:
+                    data = json.load(f)
+                    self.messages = data.get('messages', [])
+            except:
+                pass
+    
+    def _save_context(self):
+        """Save context to file."""
+        data = {
+            'messages': self.messages,
+            'saved_at': datetime.now().isoformat(),
+            'session_duration': str(datetime.now() - self.session_start)
+        }
+        with open(self.context_file, 'w') as f:
+            json.dump(data, f, indent=2)
+    
+    def add_message(self, role: str, content: str):
+        """Add a message to the context."""
+        message = {
+            'role': role,
+            'content': content,
+            'timestamp': datetime.now().isoformat(),
+            'tokens': self._count_tokens(content)
+        }
+        self.messages.append(message)
+        
+        # Trim context if needed
+        self._trim_context()
+        
+        # Auto-save
+        self._save_context()
+    
+    def add_tool_response(self, tool_name: str, response: Any):
+        """Add a tool response to the context."""
+        self.add_message('tool', f"{tool_name}: {json.dumps(response)}")
+    
+    def get_messages(self) -> List[Dict[str, str]]:
+        """Get messages for API calls."""
+        return [
+            {'role': msg['role'], 'content': msg['content']}
+            for msg in self.messages
+        ]
+    
+    def get_token_count(self) -> int:
+        """Get total token count."""
+        return sum(msg.get('tokens', 0) for msg in self.messages)
+    
+    def _count_tokens(self, text: str) -> int:
+        """Count tokens in text."""
+        try:
+            return len(self.encoder.encode(text))
+        except:
+            # Rough estimate if tiktoken fails
+            return len(text) // 4
+    
+    def _trim_context(self):
+        """Trim context to stay within token limit."""
+        while self.get_token_count() > self.max_tokens and len(self.messages) > 1:
+            # Keep system messages, remove oldest user/assistant messages
+            if self.messages[0]['role'] != 'system':
+                self.messages.pop(0)
+            else:
+                self.messages.pop(1)
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """Get conversation statistics."""
+        return {
+            'message_count': len(self.messages),
+            'token_count': self.get_token_count(),
+            'estimated_cost': self.get_token_count() * 0.000001,  # Rough estimate
+            'duration': str(datetime.now() - self.session_start),
+            'average_message_tokens': self.get_token_count() / max(len(self.messages), 1)
+        }
+    
+    def save_to_file(self, path: Path):
+        """Save conversation to a specific file."""
+        data = {
+            'messages': self.messages,
+            'stats': self.get_stats(),
+            'exported_at': datetime.now().isoformat()
+        }
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, 'w') as f:
+            json.dump(data, f, indent=2)
+    
+    def load_from_file(self, path: Path):
+        """Load conversation from a specific file."""
+        with open(path, 'r') as f:
+            data = json.load(f)
+            self.messages = data.get('messages', [])
+            self.session_start = datetime.now()  # Reset session start
+    
+    def clear(self):
+        """Clear the conversation context."""
+        self.messages = []
+        self._save_context()
+#+end_src
+
+* Tool System
+
+** Tool Base and Registry
+
+#+begin_src python :tangle src/gemini_repl/tools/tool_system.py
+"""Tool system for file operations and self-modification."""
+import os
+import json
+from pathlib import Path
+from typing import Dict, Any, List, Optional, Callable
+import google.generativeai as genai
+
+
+class ToolSystem:
+    """Manages tool definitions and execution."""
+    
+    def __init__(self, repl_instance):
+        self.repl = repl_instance
+        self.workspace = Path(os.getenv('WORKSPACE_DIR', 'workspace'))
+        self.workspace.mkdir(exist_ok=True)
+        self.enable_self_modify = os.getenv('ENABLE_SELF_MODIFY', 'true').lower() == 'true'
+        
+        # Tool registry
+        self.tools = {
+            'read_file': self.read_file,
+            'write_file': self.write_file,
+            'list_files': self.list_files,
+            'create_directory': self.create_directory,
+            'delete_file': self.delete_file,
+            'execute_python': self.execute_python,
+        }
+        
+        if self.enable_self_modify:
+            self.tools['modify_source'] = self.modify_source
+            self.tools['restart_repl'] = self.restart_repl
+    
+    def get_tool_definitions(self) -> List[genai.Tool]:
+        """Get tool definitions for Gemini API."""
+        functions = []
+        
+        # File operations
+        functions.extend([
+            genai.FunctionDeclaration(
+                name="read_file",
+                description="Read the contents of a file",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Path to the file relative to workspace"
+                        }
+                    },
+                    "required": ["path"]
+                }
+            ),
+            genai.FunctionDeclaration(
+                name="write_file",
+                description="Write content to a file",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Path to the file relative to workspace"
+                        },
+                        "content": {
+                            "type": "string",
+                            "description": "Content to write to the file"
+                        }
+                    },
+                    "required": ["path", "content"]
+                }
+            ),
+            genai.FunctionDeclaration(
+                name="list_files",
+                description="List files in a directory",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Directory path relative to workspace (default: root)"
+                        }
+                    }
+                }
+            ),
+            genai.FunctionDeclaration(
+                name="create_directory",
+                description="Create a directory",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Directory path relative to workspace"
+                        }
+                    },
+                    "required": ["path"]
+                }
+            ),
+            genai.FunctionDeclaration(
+                name="delete_file",
+                description="Delete a file or directory",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Path to delete relative to workspace"
+                        }
+                    },
+                    "required": ["path"]
+                }
+            ),
+            genai.FunctionDeclaration(
+                name="execute_python",
+                description="Execute Python code in a sandboxed environment",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "description": "Python code to execute"
+                        }
+                    },
+                    "required": ["code"]
+                }
+            )
+        ])
+        
+        # Self-modification tools
+        if self.enable_self_modify:
+            functions.extend([
+                genai.FunctionDeclaration(
+                    name="modify_source",
+                    description="Modify the REPL's own source code",
+                    parameters={
+                        "type": "object",
+                        "properties": {
+                            "file": {
+                                "type": "string",
+                                "description": "Source file path relative to src/"
+                            },
+                            "content": {
+                                "type": "string",
+                                "description": "New content for the file"
+                            }
+                        },
+                        "required": ["file", "content"]
+                    }
+                ),
+                genai.FunctionDeclaration(
+                    name="restart_repl",
+                    description="Restart the REPL to apply changes",
+                    parameters={
+                        "type": "object",
+                        "properties": {}
+                    }
+                )
+            ])
+        
+        return [genai.Tool(function_declarations=functions)]
+    
+    def execute_tool(self, tool_name: str, args: Dict[str, Any]) -> Any:
+        """Execute a tool function."""
+        if tool_name not in self.tools:
+            return {"error": f"Unknown tool: {tool_name}"}
+        
+        try:
+            result = self.tools[tool_name](**args)
+            self.repl.logger.debug(f"Tool executed: {tool_name}", {"args": args, "result": result})
+            return result
+        except Exception as e:
+            error_msg = f"Tool execution failed: {str(e)}"
+            self.repl.logger.error(error_msg, {"tool": tool_name, "args": args})
+            return {"error": error_msg}
+    
+    # Tool implementations
+    def read_file(self, path: str) -> Dict[str, Any]:
+        """Read a file from the workspace."""
+        file_path = self.workspace / path
+        
+        if not file_path.exists():
+            return {"error": f"File not found: {path}"}
+        
+        if not file_path.is_file():
+            return {"error": f"Not a file: {path}"}
+        
+        try:
+            content = file_path.read_text()
+            return {
+                "content": content,
+                "size": len(content),
+                "path": str(path)
+            }
+        except Exception as e:
+            return {"error": f"Failed to read file: {e}"}
+    
+    def write_file(self, path: str, content: str) -> Dict[str, Any]:
+        """Write content to a file in the workspace."""
+        file_path = self.workspace / path
+        
+        try:
+            # Create parent directories if needed
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Write content
+            file_path.write_text(content)
+            
+            return {
+                "success": True,
+                "path": str(path),
+                "size": len(content)
+            }
+        except Exception as e:
+            return {"error": f"Failed to write file: {e}"}
+    
+    def list_files(self, path: str = ".") -> Dict[str, Any]:
+        """List files in a directory."""
+        dir_path = self.workspace / path
+        
+        if not dir_path.exists():
+            return {"error": f"Directory not found: {path}"}
+        
+        if not dir_path.is_dir():
+            return {"error": f"Not a directory: {path}"}
+        
+        try:
+            files = []
+            for item in sorted(dir_path.iterdir()):
+                files.append({
+                    "name": item.name,
+                    "type": "directory" if item.is_dir() else "file",
+                    "size": item.stat().st_size if item.is_file() else None
+                })
+            
+            return {
+                "path": str(path),
+                "files": files,
+                "count": len(files)
+            }
+        except Exception as e:
+            return {"error": f"Failed to list files: {e}"}
+    
+    def create_directory(self, path: str) -> Dict[str, Any]:
+        """Create a directory in the workspace."""
+        dir_path = self.workspace / path
+        
+        try:
+            dir_path.mkdir(parents=True, exist_ok=True)
+            return {
+                "success": True,
+                "path": str(path)
+            }
+        except Exception as e:
+            return {"error": f"Failed to create directory: {e}"}
+    
+    def delete_file(self, path: str) -> Dict[str, Any]:
+        """Delete a file or directory."""
+        file_path = self.workspace / path
+        
+        if not file_path.exists():
+            return {"error": f"Path not found: {path}"}
+        
+        try:
+            if file_path.is_file():
+                file_path.unlink()
+            else:
+                import shutil
+                shutil.rmtree(file_path)
+            
+            return {
+                "success": True,
+                "path": str(path)
+            }
+        except Exception as e:
+            return {"error": f"Failed to delete: {e}"}
+    
+    def execute_python(self, code: str) -> Dict[str, Any]:
+        """Execute Python code in a sandboxed environment."""
+        import io
+        import contextlib
+        
+        # Create string buffer to capture output
+        output_buffer = io.StringIO()
+        error_buffer = io.StringIO()
+        
+        # Create restricted globals
+        safe_globals = {
+            '__builtins__': {
+                'print': print,
+                'len': len,
+                'range': range,
+                'str': str,
+                'int': int,
+                'float': float,
+                'list': list,
+                'dict': dict,
+                'set': set,
+                'tuple': tuple,
+                'bool': bool,
+                'sum': sum,
+                'min': min,
+                'max': max,
+                'abs': abs,
+                'round': round,
+                'sorted': sorted,
+                'enumerate': enumerate,
+                'zip': zip,
+                'map': map,
+                'filter': filter,
+            }
+        }
+        
+        try:
+            # Redirect stdout
+            with contextlib.redirect_stdout(output_buffer):
+                with contextlib.redirect_stderr(error_buffer):
+                    exec(code, safe_globals)
+            
+            return {
+                "success": True,
+                "output": output_buffer.getvalue(),
+                "error": error_buffer.getvalue()
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "output": output_buffer.getvalue(),
+                "error": str(e)
+            }
+    
+    def modify_source(self, file: str, content: str) -> Dict[str, Any]:
+        """Modify the REPL's source code (self-hosting)."""
+        if not self.enable_self_modify:
+            return {"error": "Self-modification is disabled"}
+        
+        # Resolve source file path
+        src_path = Path('src') / file
+        
+        if not src_path.exists():
+            return {"error": f"Source file not found: {file}"}
+        
+        try:
+            # Backup original
+            backup_path = src_path.with_suffix(src_path.suffix + '.bak')
+            backup_path.write_text(src_path.read_text())
+            
+            # Write new content
+            src_path.write_text(content)
+            
+            return {
+                "success": True,
+                "file": str(file),
+                "backup": str(backup_path),
+                "message": "Source modified. Use restart_repl to apply changes."
+            }
+        except Exception as e:
+            return {"error": f"Failed to modify source: {e}"}
+    
+    def restart_repl(self) -> Dict[str, Any]:
+        """Restart the REPL process."""
+        if not self.enable_self_modify:
+            return {"error": "Self-modification is disabled"}
+        
+        import sys
+        import subprocess
+        
+        try:
+            # Save current context
+            self.repl.context._save_context()
+            
+            # Restart using same Python interpreter and arguments
+            args = [sys.executable] + sys.argv
+            subprocess.Popen(args)
+            
+            # Exit current process
+            self.repl.running = False
+            
+            return {
+                "success": True,
+                "message": "Restarting REPL..."
+            }
+        except Exception as e:
+            return {"error": f"Failed to restart: {e}"}
+#+end_src
+
+* Testing Infrastructure
+
+#+begin_src python :tangle tests/test_repl.py
+"""Basic tests for Gemini REPL."""
+import unittest
+import tempfile
+import shutil
+from pathlib import Path
+from unittest.mock import patch, MagicMock
+
+# Add src to path
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
+
+from gemini_repl.core.repl import GeminiREPL
+from gemini_repl.utils.context import ContextManager
+from gemini_repl.utils.logger import Logger
+from gemini_repl.tools.tool_system import ToolSystem
+
+
+class TestGeminiREPL(unittest.TestCase):
+    """Test cases for REPL functionality."""
+    
+    def setUp(self):
+        """Set up test environment."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.old_workspace = Path.cwd()
+        Path(self.temp_dir).chmod(0o755)
+        
+        # Mock environment
+        self.env_patcher = patch.dict('os.environ', {
+            'GEMINI_API_KEY': 'test-key',
+            'WORKSPACE_DIR': str(Path(self.temp_dir) / 'workspace'),
+            'LOG_FILE': str(Path(self.temp_dir) / 'test.log'),
+            'CONTEXT_FILE': str(Path(self.temp_dir) / 'context.json')
+        })
+        self.env_patcher.start()
+    
+    def tearDown(self):
+        """Clean up test environment."""
+        self.env_patcher.stop()
+        shutil.rmtree(self.temp_dir)
+    
+    def test_context_management(self):
+        """Test context manager functionality."""
+        ctx = ContextManager()
+        
+        # Test adding messages
+        ctx.add_message("user", "Hello")
+        ctx.add_message("assistant", "Hi there!")
+        
+        messages = ctx.get_messages()
+        self.assertEqual(len(messages), 2)
+        self.assertEqual(messages[0]['role'], 'user')
+        self.assertEqual(messages[0]['content'], 'Hello')
+        
+        # Test token counting
+        tokens = ctx.get_token_count()
+        self.assertGreater(tokens, 0)
+        
+        # Test stats
+        stats = ctx.get_stats()
+        self.assertEqual(stats['message_count'], 2)
+        self.assertIn('token_count', stats)
+    
+    def test_logger(self):
+        """Test logging functionality."""
+        logger = Logger()
+        
+        # Test different log levels
+        logger.debug("Debug message", {"test": True})
+        logger.info("Info message")
+        logger.warning("Warning message")
+        logger.error("Error message")
+        
+        # Verify log file exists
+        log_file = Path(self.temp_dir) / 'test.log'
+        self.assertTrue(log_file.exists())
+    
+    def test_tool_system(self):
+        """Test tool system functionality."""
+        mock_repl = MagicMock()
+        mock_repl.logger = Logger()
+        
+        tools = ToolSystem(mock_repl)
+        
+        # Test file operations
+        result = tools.write_file("test.txt", "Hello, World!")
+        self.assertTrue(result.get('success'))
+        
+        result = tools.read_file("test.txt")
+        self.assertEqual(result.get('content'), "Hello, World!")
+        
+        result = tools.list_files(".")
+        self.assertIn('files', result)
+        self.assertEqual(len(result['files']), 1)
+        
+        # Test Python execution
+        result = tools.execute_python("print('Hello')")
+        self.assertTrue(result.get('success'))
+        self.assertEqual(result.get('output').strip(), 'Hello')
+    
+    @patch('google.generativeai.GenerativeModel')
+    def test_repl_commands(self, mock_model):
+        """Test REPL slash commands."""
+        # Mock API
+        mock_instance = MagicMock()
+        mock_model.return_value = mock_instance
+        
+        repl = GeminiREPL()
+        
+        # Test help command
+        with patch('builtins.print') as mock_print:
+            repl.cmd_help("")
+            mock_print.assert_called()
+        
+        # Test stats command
+        repl.context.add_message("user", "test")
+        with patch('builtins.print') as mock_print:
+            repl.cmd_stats("")
+            mock_print.assert_called()
+        
+        # Test exit command
+        repl.cmd_exit()
+        self.assertFalse(repl.running)
+
+
+if __name__ == '__main__':
+    unittest.main()
+#+end_src
+
+* Build and Deployment
+
+** Makefile
+
+#+begin_src makefile :tangle Makefile
+.PHONY: help install test lint run dev clean setup
+
+help:
+	@echo "Available targets:"
+	@echo "  make setup    - Initial setup and directory creation"
+	@echo "  make install  - Install dependencies"
+	@echo "  make test     - Run tests"
+	@echo "  make lint     - Run linter"
+	@echo "  make run      - Run the REPL"
+	@echo "  make dev      - Run in development mode"
+	@echo "  make clean    - Clean up generated files"
+
+setup:
+	@echo "Setting up project structure..."
+	chmod +x setup.sh
+	./setup.sh
+	@echo "Creating virtual environment..."
+	python3 -m venv venv
+	@echo "Setup complete. Run 'source venv/bin/activate' then 'make install'"
+
+install:
+	pip install --upgrade pip
+	pip install google-generativeai tiktoken pytest flake8 black
+
+test:
+	python -m pytest tests/ -v
+
+lint:
+	flake8 src/ --max-line-length=100 --ignore=E402
+	black --check src/
+
+format:
+	black src/
+
+run:
+	python -m gemini_repl
+
+dev:
+	@echo "Starting in development mode..."
+	LOG_LEVEL=DEBUG python -m gemini_repl
+
+clean:
+	rm -rf __pycache__ .pytest_cache
+	rm -rf logs/*.log
+	rm -f conversation.json
+	find . -type f -name "*.pyc" -delete
+	find . -type d -name "__pycache__" -delete
+#+end_src
+
+** Requirements
+
+#+begin_src text :tangle requirements.txt
+google-generativeai>=0.8.0
+tiktoken>=0.5.0
+pytest>=7.0.0
+flake8>=6.0.0
+black>=23.0.0
+#+end_src
+
+** Docker Support
+
+#+begin_src dockerfile :tangle Dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy source code
+COPY src/ ./src/
+COPY Makefile .
+
+# Create necessary directories
+RUN mkdir -p logs workspace
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV LOG_LEVEL=INFO
+
+# Run the REPL
+CMD ["python", "-m", "gemini_repl"]
+#+end_src
+
+** GitHub Actions
+
+#+begin_src yaml :tangle .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Lint with flake8
+      run: make lint
+    
+    - name: Run tests
+      run: make test
+      env:
+        GEMINI_API_KEY: dummy-key-for-tests
+#+end_src
+
+* Quick Start Guide
+
+#+begin_src markdown :tangle README.md
+# Python Gemini REPL
+
+A self-hosting Python REPL with Gemini AI integration, featuring conversation context, tool use, and logging.
+
+## Features
+
+- ✅ **Core REPL Event Loop** - Interactive command-line interface with slash commands
+- ✅ **Logging System** - JSON-formatted logs with file and FIFO output
+- ✅ **Context Management** - Full conversation history with token tracking
+- ✅ **Tool Use** - File I/O operations and Python code execution
+- ✅ **Self-Hosting** - Can modify its own source code and restart
+
+## Installation
+
+1. Clone and setup:
+```bash
+make setup
+source venv/bin/activate
+make install
+```
+
+2. Configure environment:
+```bash
+cp .env.example .env
+# Edit .env and add your GEMINI_API_KEY
+```
+
+3. Run the REPL:
+```bash
+make run
+```
+
+## Usage
+
+### Basic Commands
+- `/help` - Show available commands
+- `/exit` - Exit the REPL
+- `/context` - View conversation history
+- `/stats` - Show usage statistics
+- `/tools` - List available tools
+
+### Example Session
+```
+> Hello! Can you create a Python script that calculates fibonacci numbers?
+
+[AI creates fibonacci.py in workspace/]
+
+> Can you now modify it to use memoization?
+
+[AI reads and updates the file]
+
+> /stats
+Messages: 4
+Tokens: 1,250
+Estimated cost: $0.0013
+```
+
+## Development
+
+```bash
+make dev    # Run with debug logging
+make test   # Run tests
+make lint   # Check code style
+```
+
+## Architecture
+
+The system uses a modular architecture with:
+- Event-driven REPL loop
+- Pluggable tool system
+- Persistent context management
+- Structured logging
+- Self-modification capabilities
+
+See the org-mode source for detailed documentation and system diagrams.
+#+end_src
+
+* Tangling Instructions
+
+To generate all files from this org document:
+
+1. In Emacs: `C-c C-v t` (org-babel-tangle)
+2. Or from command line:
+   ```bash
+   emacs --batch -l org --eval '(org-babel-tangle-file "PYTHON-GEMINI-REPL.org")'
+   ```
+
+3. Then run:
+   ```bash
+   make setup
+   source venv/bin/activate
+   make install
+   # Add your GEMINI_API_KEY to .env
+   make run
+   ```
+
+The implementation provides all five requested features in a clean, modular Python architecture that follows your org-mode/Babel workflow preferences.
