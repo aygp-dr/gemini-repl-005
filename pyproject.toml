@@ -5,7 +5,10 @@ description = "Python-based REPL with Gemini AI integration"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "google-genai>=1.26.0",
     "google-generativeai",
+    "pytest>=8.4.1",
+    "pytest-cov>=6.2.1",
     "tiktoken",
 ]
 
@@ -23,3 +26,8 @@ target-version = "py311"
 [tool.mypy]
 python_version = "3.11"
 ignore_missing_imports = true
+
+[dependency-groups]
+dev = [
+    "mypy>=1.17.0",
+]
