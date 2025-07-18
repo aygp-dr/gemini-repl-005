@@ -1,0 +1,10 @@
+SDK migration prompts:
+
+User: 'look at issue 7, review the experiment in experiments/sdk-migration/ ; commit the experiment and then fix the repl. push the current work'
+User: 'just cd back into the project root ; don't stay in the experiment if you know what's wrong or have a solution locked in'
+
+Fixed the critical SDK incompatibility:
+- Migrated from google-generativeai to google-genai
+- Updated all imports and API usage patterns
+- Removed old SDK dependency
+- Basic functionality restored (full conversation support TODO)
