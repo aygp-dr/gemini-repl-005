@@ -1,0 +1,24 @@
+## Makefile Simplification
+
+### Prompts Used
+1. "rm thse i thnik: PYTHON-GEMINI-REPL.org.bak SHARED-SETUP.bash SHARED-SETUP.org"
+2. "i probably don't need those. are they useful?"
+3. "ok, i think those are fine to include. you might rm setup.sh since i generally perfer to have only the org mode tangle take care of it but we're going to be just working with the source code moving forward then rebuilding resurrectoin for a 006 just from the commits / notes. you might be able to revmoe the org mode files for those other than those in .ai/ since that's for chat rehydration / resurrection. commit the python files that look good then we're going to start validating features with out expect scripts"
+4. "you can rm teh org-babel-demo.org file but i'llkeep the project elisp file for working on files with you . you might rename that from org-babel-config.el to gemini-repl.el it should support working on python projects / lsp / etc and org mode for this project in emacs (over TRAMP)"
+5. "also, git ignore README.md since we just have that for uv support (we'll see this in a bit). create a gmake target for README.md: READMME.org \n emacs -l org (convert to markdown $@ $<) or whatever"
+6. "in general i don't like the if checks since we're in a repo and readme.org is pretty core. also use the gmake standard $@ $< from the target defs to make it cleaner / more obvoius these aren't phony targets"
+
+### Changes Made
+1. Removed unnecessary files (setup.sh, SHARED-SETUP.*, org-babel-demo.org)
+2. Renamed org-babel-config.el to gemini-repl.el with full project support
+3. Added README.md to .gitignore as it's generated
+4. Created Makefile target for README.md generation
+5. Simplified Makefile using standard make variables ($@, $<)
+6. Removed unnecessary if-checks for core files
+7. Made dependencies explicit (hooks: .venv/bin/activate)
+
+### Design Rationale
+- Trust that core files exist in the repo
+- Use idiomatic make syntax for clarity
+- Keep generated files out of version control
+- Provide comprehensive Emacs project support
