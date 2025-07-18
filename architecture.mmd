@@ -1,0 +1,38 @@
+graph TB
+    subgraph "Core Components"
+        REPL[REPL Event Loop]
+        CTX[Context Manager]
+        LOG[Logger]
+        API[Gemini API Client]
+        TOOLS[Tool System]
+    end
+    
+    subgraph "Tool Functions"
+        READ[File Reader]
+        WRITE[File Writer]
+        SELF[Self-Modify]
+    end
+    
+    subgraph "Storage"
+        HIST[conversation.json]
+        LOGS[logs/gemini.log]
+        FILES[workspace/]
+    end
+    
+    REPL --> CTX
+    REPL --> LOG
+    REPL --> API
+    REPL --> TOOLS
+    
+    TOOLS --> READ
+    TOOLS --> WRITE
+    TOOLS --> SELF
+    
+    CTX --> HIST
+    LOG --> LOGS
+    READ --> FILES
+    WRITE --> FILES
+    SELF --> FILES
+    
+    API --> |requests| Gemini[Gemini API]
+    Gemini --> |responses| API

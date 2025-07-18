@@ -1,0 +1,133 @@
+#+TITLE: Org-Babel Shell Execution Demo
+#+PROPERTY: header-args :mkdirp yes :comments both
+
+* Setup
+
+To enable shell/bash execution in org-babel, add this to your Emacs config:
+
+#+begin_src emacs-lisp
+(org-babel-do-load-languages
+ 'org-babel-load-languages
+ '((shell . t)
+   (bash . t)))
+#+end_src
+
+Or load the provided configuration:
+
+#+begin_src emacs-lisp
+(load-file "org-babel-config.el")
+#+end_src
+
+* Shell Execution Examples
+
+** Basic Shell Command
+
+Press C-c C-c to execute:
+
+#+begin_src shell :results output
+echo "Hello from shell!"
+date
+pwd
+#+end_src
+
+** Bash-specific Features
+
+#+begin_src bash :results output
+# Bash arrays
+fruits=("apple" "banana" "orange")
+for fruit in "${fruits[@]}"; do
+    echo "I like $fruit"
+done
+#+end_src
+
+** Creating Files
+
+#+begin_src bash :results output :dir .
+cat > test-file.txt << EOF
+This is a test file
+created by org-babel
+EOF
+echo "File created!"
+ls -la test-file.txt
+#+end_src
+
+** Error Handling
+
+#+begin_src bash :results output
+set -e  # Exit on error
+echo "This will print"
+false || echo "Error caught!"
+echo "This will also print"
+#+end_src
+
+** Environment Variables
+
+#+begin_src bash :results output :exports both
+export MY_VAR="Hello from org-babel"
+echo "MY_VAR = $MY_VAR"
+echo "PATH has $(echo $PATH | tr ':' '\n' | wc -l) entries"
+#+end_src
+
+** Multi-line Scripts
+
+#+begin_src bash :results output :tangle example-script.sh
+#!/bin/bash
+# This script can be tangled to a file
+
+function greet() {
+    local name=$1
+    echo "Hello, $name!"
+}
+
+greet "World"
+greet "Org-mode"
+#+end_src
+
+* Advanced Features
+
+** Session Support
+
+Start a session with :session
+
+#+begin_src bash :session mysession :results output
+export SESSION_VAR="I persist!"
+echo "Set SESSION_VAR"
+#+end_src
+
+#+begin_src bash :session mysession :results output
+echo "SESSION_VAR = $SESSION_VAR"
+#+end_src
+
+** Passing Variables
+
+#+name: myname
+: John Doe
+
+#+begin_src bash :var name=myname :results output
+echo "Hello, $name!"
+#+end_src
+
+** Table Input/Output
+
+#+name: data-table
+| Name  | Age |
+|-------+-----|
+| Alice |  30 |
+| Bob   |  25 |
+
+#+begin_src bash :var data=data-table :results output
+echo "Processing table data:"
+echo "$data" | while read name age; do
+    echo "$name is $age years old"
+done
+#+end_src
+
+* Tips
+
+1. Use =:results output= to capture stdout
+2. Use =:results value= to capture the return value
+3. Add =:exports code= to only export code (not results)
+4. Add =:exports results= to only export results (not code)
+5. Add =:exports both= to export both code and results
+6. Use =:dir /path/to/dir= to set working directory
+7. Use =:shebang #!/bin/bash= to set the shebang line when tangling

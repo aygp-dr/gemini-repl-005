@@ -67,3 +67,11 @@ htmlcov/
 # Tangled output (if needed)
 # Uncomment if you want to ignore tangled Python files
 # *.py
+
+# Makefile tangling artifacts
+Makefile.tangled
+
+# Generated workspace files
+workspace/
+conversation.json
+logs/

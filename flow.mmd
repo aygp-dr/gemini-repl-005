@@ -1,0 +1,24 @@
+sequenceDiagram
+    participant User
+    participant REPL
+    participant Context
+    participant Logger
+    participant API
+    participant Tools
+    
+    User->>REPL: Input command
+    REPL->>Logger: Log input
+    REPL->>Context: Add to history
+    
+    alt Slash Command
+        REPL->>REPL: Handle command
+    else API Request
+        REPL->>API: Send with context
+        API->>Tools: Check for tool calls
+        Tools-->>API: Execute if needed
+        API-->>REPL: Return response
+    end
+    
+    REPL->>Context: Update history
+    REPL->>Logger: Log response
+    REPL->>User: Display output

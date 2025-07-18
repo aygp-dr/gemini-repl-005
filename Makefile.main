@@ -1,0 +1,55 @@
+# Main Makefile for org-mode tangling and Python REPL
+
+.PHONY: help tangle detangle clean-tangled
+
+help:
+	@echo "Org-mode targets:"
+	@echo "  make tangle       - Extract code from org files"
+	@echo "  make detangle     - Update org files from code (manual process)"
+	@echo "  make clean-tangled - Remove all tangled files"
+	@echo ""
+	@echo "Python REPL targets (after tangling):"
+	@$(MAKE) -f Makefile.tangled help 2>/dev/null || echo "  Run 'make tangle' first to generate Python targets"
+
+# Tangle org files to extract code
+tangle:
+	@echo "Tangling org files..."
+	@if command -v emacs >/dev/null 2>&1; then \
+		emacs --batch --eval "(require 'org)" \
+			--eval "(setq org-src-preserve-indentation t)" \
+			--eval "(setq org-babel-default-header-args '((:mkdirp . \"yes\") (:comments . \"both\")))" \
+			--eval "(org-babel-tangle-file \"PYTHON-GEMINI-REPL.org\")" \
+			--eval "(kill-emacs)"; \
+		echo "✓ Tangled PYTHON-GEMINI-REPL.org"; \
+		mv Makefile Makefile.tangled 2>/dev/null || true; \
+		cp Makefile.main Makefile 2>/dev/null || true; \
+	else \
+		echo "Error: Emacs not found. Please install Emacs to use org-babel-tangle."; \
+		exit 1; \
+	fi
+
+# Detangle - update org files from code changes
+detangle:
+	@echo "Detangling is not fully automated in org-mode."
+	@echo "To update org files from code changes:"
+	@echo "1. Open the org file in Emacs"
+	@echo "2. Use org-babel-detangle (C-c C-v C-d) on code blocks"
+	@echo "3. Or manually update the code blocks"
+
+# Clean tangled files  
+clean-tangled:
+	@echo "Cleaning tangled files..."
+	rm -rf src/ tests/ .github/
+	rm -f setup.sh .env.example .envrc requirements.txt Dockerfile README.md
+	rm -f architecture.mmd flow.mmd
+	rm -f Makefile.tangled
+	@echo "✓ Cleaned all tangled files"
+
+# Pass through to tangled Makefile
+%:
+	@if [ -f Makefile.tangled ]; then \
+		$(MAKE) -f Makefile.tangled $@; \
+	else \
+		echo "Error: Makefile.tangled not found. Run 'make tangle' first."; \
+		exit 1; \
+	fi
