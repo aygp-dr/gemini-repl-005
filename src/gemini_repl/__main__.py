@@ -4,8 +4,10 @@
 # [[file:../../PYTHON-GEMINI-REPL.org::*Main Entry Point][Main Entry Point:1]]
 #!/usr/bin/env python3
 """Main entry point for Gemini REPL."""
+
 import sys
 from gemini_repl.core.repl import GeminiREPL
+
 
 def main():
     repl = GeminiREPL()
@@ -17,6 +19,7 @@ def main():
     except Exception as e:
         print(f"\nError: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
