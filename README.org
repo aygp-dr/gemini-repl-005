@@ -1,0 +1,204 @@
+#+TITLE: Python Gemini REPL
+#+AUTHOR: Gemini REPL Project
+#+DATE: 2025-01-17
+
+* Overview
+
+A self-hosting Python REPL with Gemini AI integration, featuring conversation context, tool use, and logging.
+
+** Features
+
+- ✅ *Core REPL Event Loop* - Interactive command-line interface with slash commands
+- ✅ *Logging System* - JSON-formatted logs with file and FIFO output
+- ✅ *Context Management* - Full conversation history with token tracking
+- ✅ *Tool Use* - File I/O operations and Python code execution
+- ✅ *Self-Hosting* - Can modify its own source code and restart
+
+** Documentation
+
+For the latest Gemini API documentation, see: [[https://ai.google.dev/gemini-api/docs][Google AI Gemini API Docs]]
+
+* Installation
+
+** Prerequisites
+
+- Python 3.11+
+- uv (for dependency management)
+- Emacs (for org-mode tangling)
+
+** Setup
+
+1. Clone and setup:
+   #+begin_src bash
+   make setup
+   source .venv/bin/activate
+   #+end_src
+
+2. Configure environment:
+   #+begin_src bash
+   # Edit .env and add your GEMINI_API_KEY
+   # Get your API key from: https://aistudio.google.com/app/apikey
+   #+end_src
+
+3. Run the REPL:
+   #+begin_src bash
+   make run
+   # or
+   python -m gemini_repl
+   #+end_src
+
+* Usage
+
+** Basic Commands
+
+- Type messages normally to chat with Gemini
+- Use ~/help~ for available commands
+- Use ~/exit~ or Ctrl-D to quit
+
+** Slash Commands
+
+| Command | Description |
+|---------+-------------|
+| ~/help~ | Show available commands |
+| ~/clear~ | Clear conversation context |
+| ~/save [filename]~ | Save conversation |
+| ~/load <filename>~ | Load conversation |
+| ~/context~ | Show conversation context |
+| ~/stats~ | Display usage statistics |
+| ~/tools~ | List available tools |
+| ~/logs~ | Show recent logs |
+| ~/restart~ | Restart the REPL |
+
+** Tool Functions
+
+The REPL includes built-in tools for file operations:
+- ~read_file~ - Read file contents
+- ~write_file~ - Create/update files
+- ~list_files~ - List directory contents
+- ~execute_python~ - Run Python code (sandboxed)
+
+* API Migration Note
+
+This implementation currently uses the ~google-generativeai~ library. The newer ~google-genai~ SDK provides a different API:
+
+** Current Implementation (google-generativeai)
+#+begin_src python
+import google.generativeai as genai
+
+genai.configure(api_key=api_key)
+model = genai.GenerativeModel('gemini-pro')
+response = model.generate_content("Hello, Gemini!")
+print(response.text)
+#+end_src
+
+** New SDK (google-genai) - Examples
+#+begin_src python
+# Basic usage
+from google import genai
+
+client = genai.Client()
+response = client.models.generate_content(
+    model="gemini-2.0-flash-exp",
+    contents="Explain how AI works in a few words",
+)
+print(response.text)
+#+end_src
+
+#+begin_src python
+# Structured output with Pydantic
+from google import genai
+from pydantic import BaseModel
+
+class Recipe(BaseModel):
+    recipe_name: str
+    ingredients: list[str]
+
+client = genai.Client()
+response = client.models.generate_content(
+    model="gemini-2.0-flash-exp",
+    contents="List a few popular cookie recipes",
+    config={
+        "response_mime_type": "application/json",
+        "response_schema": list[Recipe],
+    },
+)
+recipes = response.parsed
+#+end_src
+
+#+begin_src python
+# Function calling
+from google import genai
+from google.genai import types
+
+schedule_meeting = {
+    "name": "schedule_meeting",
+    "description": "Schedule a meeting",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "attendees": {"type": "array", "items": {"type": "string"}},
+            "date": {"type": "string"},
+            "time": {"type": "string"},
+            "topic": {"type": "string"},
+        },
+        "required": ["attendees", "date", "time", "topic"],
+    },
+}
+
+client = genai.Client()
+tools = types.Tool(function_declarations=[schedule_meeting])
+config = types.GenerateContentConfig(tools=[tools])
+
+response = client.models.generate_content(
+    model="gemini-2.0-flash-exp",
+    contents="Schedule a meeting with Bob and Alice",
+    config=config,
+)
+#+end_src
+
+* Development
+
+** Project Structure
+
+#+begin_example
+gemini-repl-005/
+├── src/gemini_repl/
+│   ├── core/
+│   │   ├── repl.py        # Main REPL loop
+│   │   └── api_client.py  # Gemini API wrapper
+│   ├── utils/
+│   │   ├── context.py     # Context management
+│   │   └── logger.py      # Logging system
+│   └── tools/
+│       └── tool_system.py # Tool execution
+├── tests/                 # Test suite
+├── scripts/               # Development scripts
+├── .ai/                   # AI context files
+└── PYTHON-GEMINI-REPL.org # Literate source
+#+end_example
+
+** Building from Source
+
+The project uses org-mode literate programming:
+
+#+begin_src bash
+# Extract code from org files
+make tangle
+
+# Run tests
+make test
+
+# Run linter
+make lint
+#+end_src
+
+** Contributing
+
+1. Make changes to ~PYTHON-GEMINI-REPL.org~
+2. Run ~make tangle~ to extract code
+3. Test with ~make test~
+4. Submit PR with tests
+
+* License
+
+MIT License - See LICENSE file for details
