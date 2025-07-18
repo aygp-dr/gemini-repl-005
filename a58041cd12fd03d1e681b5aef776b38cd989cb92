@@ -1,0 +1,10 @@
+README.org prompts:
+
+User requested: 'in the readme can you add in a link to the docs for https://ai.google.dev/gemini-api/docs'
+User also requested: 'rm README.md && gmake README.md for current'
+
+Added comprehensive documentation including:
+- New google-genai SDK examples
+- API migration guide from google-generativeai to google-genai
+- Link to official documentation
+- Project structure and usage instructions
