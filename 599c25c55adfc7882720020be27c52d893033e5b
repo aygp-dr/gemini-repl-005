@@ -1,0 +1,27 @@
+## Linting Fixes Implementation
+
+### Issues Found
+1. **Indentation Error**: The entire logging system code block in PYTHON-GEMINI-REPL.org had 2-space indentation
+   - Fixed with: sed -i.bak '573,701s/^  //' PYTHON-GEMINI-REPL.org
+
+2. **Bare except clauses (E722)**: Multiple locations using bare except:
+   - Line 385: get_tool_metadata() - Changed to `except Exception:`
+   - Line 727: tiktoken encoder init - Changed to `except Exception:`
+   - Line 740: JSON loading - Changed to `except (FileNotFoundError, json.JSONDecodeError):`
+   - Line 788: token counting - Changed to `except Exception:`
+   - Lines 633, 643: FIFO operations - Changed to `except (OSError, IOError):`
+
+### Testing Results
+- Both `remake` and `gmake` showed identical linting errors
+- After fixes, ruff successfully reformatted all files
+- All bare except clauses resolved
+- Code formatting standardized (quotes, spacing)
+
+### Configuration Updates
+- Added pytest, coverage, ruff, and mypy configurations to pyproject.toml
+- Set appropriate project metadata and dependencies
+
+### Notes
+- The tangled Python files were auto-formatted by ruff
+- SHARED-SETUP.org was copied from another project but not included in this commit
+- Observer feature (issue #2) changes kept separate as requested
