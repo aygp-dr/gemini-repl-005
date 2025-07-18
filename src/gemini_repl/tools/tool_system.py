@@ -7,7 +7,7 @@
 import os
 from pathlib import Path
 from typing import Dict, Any, List
-import google.generativeai as genai
+from google.genai import types
 
 
 class ToolSystem:
@@ -33,14 +33,14 @@ class ToolSystem:
             self.tools["modify_source"] = self.modify_source
             self.tools["restart_repl"] = self.restart_repl
 
-    def get_tool_definitions(self) -> List[genai.Tool]:
+    def get_tool_definitions(self) -> List[types.Tool]:
         """Get tool definitions for Gemini API."""
         functions = []
 
         # File operations
         functions.extend(
             [
-                genai.FunctionDeclaration(
+                types.FunctionDeclaration(
                     name="read_file",
                     description="Read the contents of a file",
                     parameters={
@@ -54,7 +54,7 @@ class ToolSystem:
                         "required": ["path"],
                     },
                 ),
-                genai.FunctionDeclaration(
+                types.FunctionDeclaration(
                     name="write_file",
                     description="Write content to a file",
                     parameters={
@@ -72,7 +72,7 @@ class ToolSystem:
                         "required": ["path", "content"],
                     },
                 ),
-                genai.FunctionDeclaration(
+                types.FunctionDeclaration(
                     name="list_files",
                     description="List files in a directory",
                     parameters={
@@ -85,7 +85,7 @@ class ToolSystem:
                         },
                     },
                 ),
-                genai.FunctionDeclaration(
+                types.FunctionDeclaration(
                     name="create_directory",
                     description="Create a directory",
                     parameters={
@@ -99,7 +99,7 @@ class ToolSystem:
                         "required": ["path"],
                     },
                 ),
-                genai.FunctionDeclaration(
+                types.FunctionDeclaration(
                     name="delete_file",
                     description="Delete a file or directory",
                     parameters={
@@ -113,7 +113,7 @@ class ToolSystem:
                         "required": ["path"],
                     },
                 ),
-                genai.FunctionDeclaration(
+                types.FunctionDeclaration(
                     name="execute_python",
                     description="Execute Python code in a sandboxed environment",
                     parameters={
@@ -134,7 +134,7 @@ class ToolSystem:
         if self.enable_self_modify:
             functions.extend(
                 [
-                    genai.FunctionDeclaration(
+                    types.FunctionDeclaration(
                         name="modify_source",
                         description="Modify the REPL's own source code",
                         parameters={
@@ -152,7 +152,7 @@ class ToolSystem:
                             "required": ["file", "content"],
                         },
                     ),
-                    genai.FunctionDeclaration(
+                    types.FunctionDeclaration(
                         name="restart_repl",
                         description="Restart the REPL to apply changes",
                         parameters={"type": "object", "properties": {}},
@@ -160,7 +160,7 @@ class ToolSystem:
                 ]
             )
 
-        return [genai.Tool(function_declarations=functions)]
+        return [types.Tool(function_declarations=functions)]
 
     def execute_tool(self, tool_name: str, args: Dict[str, Any]) -> Any:
         """Execute a tool function."""

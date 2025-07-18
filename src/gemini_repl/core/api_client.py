@@ -6,8 +6,7 @@
 
 import os
 from typing import List, Dict, Any, Optional
-import google.generativeai as genai
-from google.generativeai.types import GenerateContentResponse
+from google import genai
 
 
 class GeminiClient:
@@ -18,47 +17,32 @@ class GeminiClient:
         if not api_key:
             raise ValueError("GEMINI_API_KEY not set in environment")
 
-        genai.configure(api_key=api_key)
+        self.client = genai.Client(api_key=api_key)
         self.model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
-        self.model = genai.GenerativeModel(
-            self.model_name,
-            generation_config={
-                "temperature": 0.7,
-                "top_p": 0.95,
-                "top_k": 40,
-                "max_output_tokens": 8192,
-            },
-        )
 
     def send_message(
         self, messages: List[Dict[str, str]], tools: Optional[List[Any]] = None
-    ) -> GenerateContentResponse:
+    ) -> Any:
         """Send message to Gemini API with optional tools."""
-        # Convert messages to Gemini format
-        gemini_messages = self._convert_messages(messages)
-
-        # Configure model with tools if provided
-        if tools:
-            self.model = genai.GenerativeModel(
-                self.model_name,
-                tools=tools,
-                generation_config={
-                    "temperature": 0.7,
-                    "top_p": 0.95,
-                    "top_k": 40,
-                    "max_output_tokens": 8192,
-                },
-            )
+        # For now, we'll use a simple approach without conversation history
+        # TODO: Research proper conversation handling in new SDK
+        
+        # Get the last user message
+        last_user_message = None
+        for msg in reversed(messages):
+            if msg["role"] == "user":
+                last_user_message = msg["content"]
+                break
+        
+        if not last_user_message:
+            raise ValueError("No user message found")
 
         # Send request
         try:
-            if len(gemini_messages) == 1:
-                response = self.model.generate_content(gemini_messages[0])
-            else:
-                # Use chat for multi-turn conversations
-                chat = self.model.start_chat(history=gemini_messages[:-1])
-                response = chat.send_message(gemini_messages[-1])
-
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=last_user_message
+            )
             return response
 
         except Exception as e:
