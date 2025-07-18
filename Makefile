@@ -1,52 +1,95 @@
-# Makefile
+# Makefile for Gemini REPL - Simplified with script delegation
 
+.PHONY: help setup lint test build run clean tangle detangle all
 
-# [[file:PYTHON-GEMINI-REPL.org::*Makefile][Makefile:1]]
-.PHONY: help install test lint run dev clean setup
+# Default target
+all: setup lint test
 
 help:
-	@echo "Available targets:"
-	@echo "  make setup    - Initial setup and directory creation"
-	@echo "  make install  - Install dependencies"
-	@echo "  make test     - Run tests"
-	@echo "  make lint     - Run linter"
+	@echo "Gemini REPL Development Commands:"
+	@echo "  make setup    - Set up development environment with uv"
+	@echo "  make lint     - Run linters (ruff, mypy)"
+	@echo "  make test     - Run test suite with coverage"
+	@echo "  make build    - Build distribution packages"
 	@echo "  make run      - Run the REPL"
-	@echo "  make dev      - Run in development mode"
-	@echo "  make clean    - Clean up generated files"
+	@echo "  make clean    - Clean generated files"
+	@echo ""
+	@echo "Org-mode Commands:"
+	@echo "  make tangle   - Extract code from PYTHON-GEMINI-REPL.org"
+	@echo "  make detangle - Update org from code (manual process)"
 
+# Development commands - delegate to scripts
 setup:
-	@echo "Setting up project structure..."
-	chmod +x setup.sh
-	./setup.sh
-	@echo "Creating virtual environment..."
-	python3 -m venv venv
-	@echo "Setup complete. Run 'source venv/bin/activate' then 'make install'"
-
-install:
-	pip install --upgrade pip
-	pip install google-generativeai tiktoken pytest flake8 black
-
-test:
-	python -m pytest tests/ -v
+	@./scripts/setup.sh
 
 lint:
-	flake8 src/ --max-line-length=100 --ignore=E402
-	black --check src/
+	@./scripts/lint.sh
 
-format:
-	black src/
+test:
+	@./scripts/test.sh
+
+build:
+	@./scripts/build.sh
 
 run:
-	python -m gemini_repl
+	@./scripts/run.sh
 
-dev:
-	@echo "Starting in development mode..."
-	LOG_LEVEL=DEBUG python -m gemini_repl
+# Org-mode tangling
+tangle:
+	@echo "Tangling org files..."
+	@if command -v emacs >/dev/null 2>&1; then \
+		emacs --batch --eval "(require 'org)" \
+			--eval "(setq org-src-preserve-indentation t)" \
+			--eval "(setq org-babel-default-header-args '((:mkdirp . \"yes\") (:comments . \"both\")))" \
+			--eval "(org-babel-tangle-file \"PYTHON-GEMINI-REPL.org\")" \
+			--eval "(kill-emacs)"; \
+		echo "✓ Tangled PYTHON-GEMINI-REPL.org"; \
+		mv Makefile Makefile.tangled 2>/dev/null || true; \
+		cp Makefile.main Makefile 2>/dev/null || true; \
+	else \
+		echo "Error: Emacs not found. Please install Emacs to use org-babel-tangle."; \
+		exit 1; \
+	fi
 
+detangle:
+	@echo "Detangling requires manual Emacs interaction:"
+	@echo "1. Open PYTHON-GEMINI-REPL.org in Emacs"
+	@echo "2. Use C-c C-v C-d on code blocks to update from source files"
+
+# Clean up
 clean:
-	rm -rf __pycache__ .pytest_cache
-	rm -rf logs/*.log
-	rm -f conversation.json
-	find . -type f -name "*.pyc" -delete
-	find . -type d -name "__pycache__" -delete
-# Makefile:1 ends here
+	@echo "Cleaning generated files..."
+	@rm -rf __pycache__ .pytest_cache build/ dist/ *.egg-info
+	@rm -rf logs/*.log
+	@rm -f conversation.json
+	@find . -type f -name "*.pyc" -delete
+	@find . -type d -name "__pycache__" -delete
+	@echo "✓ Clean complete"
+
+# Clean tangled files
+clean-tangled:
+	@echo "Cleaning tangled files..."
+	@rm -rf src/ tests/ .github/
+	@rm -f setup.sh .env.example .envrc requirements.txt Dockerfile README.md
+	@rm -f architecture.mmd flow.mmd
+	@rm -f Makefile.tangled
+	@echo "✓ Cleaned all tangled files"
+
+# Quick commands
+dev: setup
+	@echo "Development environment ready. Activate with: source .venv/bin/activate"
+
+check: lint test
+	@echo "✓ All checks passed"
+
+# Install pre-commit hooks
+hooks:
+	@if [ -f .venv/bin/activate ]; then \
+		source .venv/bin/activate && \
+		pip install pre-commit && \
+		pre-commit install; \
+		echo "✓ Pre-commit hooks installed"; \
+	else \
+		echo "Error: Virtual environment not found. Run 'make setup' first."; \
+		exit 1; \
+	fi

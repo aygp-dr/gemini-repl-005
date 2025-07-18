@@ -1,0 +1,193 @@
+#+TITLE: Script Style Guide
+#+AUTHOR: Gemini REPL Project
+#+DATE: 2025-01-17
+
+* Overview
+All scripts in this project follow a consistent style to ensure reliability, maintainability, and ease of use.
+
+* Script Structure
+
+** Shebang and Options
+#+begin_src bash
+#!/usr/bin/env bash
+set -euo pipefail
+#+end_src
+
+- Always use ~#!/usr/bin/env bash~ for portability
+- Set strict error handling:
+  - ~-e~ exit on error
+  - ~-u~ exit on undefined variable
+  - ~-o pipefail~ exit on pipe failure
+
+** Source Common Utilities
+#+begin_src bash
+source "$(dirname "$0")/common.sh"
+#+end_src
+
+- All scripts should source ~common.sh~ for shared functionality
+- Use ~$(dirname "$0")~ to ensure correct path resolution
+
+** Script Header
+#+begin_src bash
+# One-line description of what the script does
+#
+# Usage: script_name.sh [options]
+#   -h, --help    Show this help message
+#   -v, --verbose Enable verbose output
+#+end_src
+
+* Common Functions Available
+
+From ~scripts/common.sh~:
+
+| Function | Purpose |
+|----------+---------|
+| ~find_project_root()~ | Locate project root by finding pyproject.toml |
+| ~ensure_project_root()~ | Change to project root directory |
+| ~activate_venv()~ | Activate virtual environment if not already active |
+| ~ensure_package(package, [import_name])~ | Install package if not present |
+| ~load_env()~ | Load environment variables from .env file |
+| ~print_status(type, message)~ | Print colored status messages |
+| ~require_command(cmd, [install_msg])~ | Check for required commands |
+
+* Best Practices
+
+** Always Run from Project Root
+#+begin_src bash
+ensure_project_root
+#+end_src
+
+** Activate Virtual Environment
+#+begin_src bash
+activate_venv
+#+end_src
+
+** Use Consistent Status Messages
+#+begin_src bash
+print_status "info" "Starting process..."
+print_status "success" "Process completed"
+print_status "error" "Process failed"
+print_status "warning" "Process had warnings"
+#+end_src
+
+** Check Dependencies
+#+begin_src bash
+require_command "uv" "Install with: curl -LsSf https://astral.sh/uv/install.sh | sh"
+ensure_package "pytest"
+ensure_package "google-generativeai" "google.generativeai"
+#+end_src
+
+** Handle Arguments
+#+begin_src bash
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        -v|--verbose)
+            VERBOSE=1
+            shift
+            ;;
+        *)
+            print_status "error" "Unknown option: $1"
+            show_help
+            exit 1
+            ;;
+    esac
+done
+#+end_src
+
+** Clean Exit
+#+begin_src bash
+trap cleanup EXIT
+
+cleanup() {
+    # Clean up temporary files, restore state, etc.
+    rm -f "$TEMP_FILE"
+}
+#+end_src
+
+* Example Script Template
+
+#+begin_src bash :tangle example_template.sh :comments no
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Load common utilities
+source "$(dirname "$0")/common.sh"
+
+# Script description
+#
+# Usage: example.sh [options]
+#   -h, --help    Show help
+#   -v, --verbose Verbose output
+
+VERBOSE=0
+
+show_help() {
+    grep "^#" "$0" | grep -E "Usage:|^#   " | sed 's/^# *//'
+}
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        -v|--verbose)
+            VERBOSE=1
+            shift
+            ;;
+        *)
+            print_status "error" "Unknown option: $1"
+            show_help
+            exit 1
+            ;;
+    esac
+done
+
+# Main script logic
+main() {
+    ensure_project_root
+    activate_venv
+    
+    print_status "info" "Starting example script..."
+    
+    # Your logic here
+    
+    print_status "success" "Example script completed"
+}
+
+# Run main function
+main "$@"
+#+end_src
+
+* Naming Conventions
+
+- Use lowercase with underscores for script names: ~run_tests.sh~
+- For Makefile targets, convert hyphens to underscores: ~make lint~ → ~scripts/lint.sh~
+- Keep names descriptive but concise
+
+* Error Handling
+
+- Always check return codes for critical operations
+- Provide meaningful error messages
+- Exit with appropriate codes (0 for success, 1-255 for various errors)
+- Use ~trap~ for cleanup on exit
+
+* Testing Scripts
+
+- Test with ~shellcheck~ for common issues
+- Test with both empty and populated virtual environments
+- Test from different directories to ensure path resolution works
+- Test with missing dependencies to ensure proper error messages
+
+* Environment Variables
+
+Common environment variables used:
+- ~PROJECT_ROOT~ - Automatically set by common.sh
+- ~PYTHONPATH~ - Automatically includes ~$PROJECT_ROOT/src~
+- ~VIRTUAL_ENV~ - Set by virtual environment activation
+- ~VERBOSE~ - Convention for verbose output (0 or 1)

@@ -1,0 +1,195 @@
+#+TITLE: Gemini REPL Regeneration Guide
+#+AUTHOR: Gemini REPL Project
+#+DATE: 2025-01-17
+
+* Overview
+
+This document tracks the prompts, implementation details, testing approach, and issues encountered during the development of the Gemini REPL project. It serves as a guide for regenerating or extending the project.
+
+* Original Prompts
+
+** Initial Request (from GEMINI-REPL-PROMPTS.org)
+"Use Python instead of ClojureScript and see how close we can get to a one-shot for:
+1) Core REPL event loop
+2) Logging  
+3) Context
+4) Tool use (r/w files)
+5) Self hosting"
+
+** Follow-up Requirements
+- Add good .gitignore and .gitattributes
+- Use org-mode with :comments both and :mkdirp t
+- Create Makefile for tangle/detangle
+- Add git notes with cleaned up prompts
+- Initialize with uv
+- Simplify Makefile with setup/lint/test/build/run
+- Use scripts/ directory with common utilities
+
+* Implementation Approach
+
+** Architecture Decisions
+1. *Modular Design*: Separated concerns into core/, utils/, and tools/ packages
+2. *Event-Driven REPL*: Used slash commands for special operations
+3. *Context Management*: Token-aware with automatic trimming
+4. *Tool System*: Sandboxed execution with clear interfaces
+5. *Logging*: Structured JSON logs with FIFO support
+
+** Key Components
+- ~src/gemini_repl/core/repl.py~ - Main REPL loop
+- ~src/gemini_repl/core/api_client.py~ - Gemini API integration
+- ~src/gemini_repl/utils/context.py~ - Context management
+- ~src/gemini_repl/utils/logger.py~ - Structured logging
+- ~src/gemini_repl/tools/tool_system.py~ - Tool execution framework
+
+* Issues Encountered and Solutions
+
+** Org-mode Tangling Issues
+*** Problem: Mermaid blocks lack comment syntax
+- *Solution*: Added ~:comments no~ to mermaid blocks
+- *Alternative*: Set comment format in Makefile (not used)
+
+*** Problem: Dockerfile lacks comment syntax for org-babel
+- *Solution*: Used ~:comments link~ which uses shell-style comments
+
+*** Problem: .envrc was using Python instead of direnv syntax
+- *Solution*: Rewrote to use proper direnv/bash syntax
+
+** Build System Evolution
+1. Started with tangled Makefile from org-mode
+2. Created Makefile.main to preserve tangle functionality
+3. Moved complex logic to scripts/ directory
+4. Created common.sh for shared utilities
+
+* Testing Approach
+
+** Unit Tests
+- Comprehensive test suite in ~tests/test_repl.py~
+- Mocked external dependencies (Gemini API)
+- Tests cover all major components
+
+** Integration Testing
+- Manual testing with real Gemini API
+- FIFO log monitoring for real-time debugging
+- Environment variable handling
+
+** Linting and Type Checking
+- ruff for linting and formatting (replaces flake8/black)
+- mypy for type checking
+- Pre-commit hooks available
+
+* Regeneration Steps
+
+** From Scratch
+#+begin_src bash
+# 1. Clone repository
+git clone https://github.com/aygp-dr/gemini-repl-005.git
+cd gemini-repl-005
+
+# 2. Extract code from org file
+make tangle
+
+# 3. Set up development environment
+make setup
+
+# 4. Activate virtual environment
+source .venv/bin/activate
+
+# 5. Configure API key
+cp .env.example .env
+# Edit .env to add GEMINI_API_KEY
+
+# 6. Run tests
+make test
+
+# 7. Run the REPL
+make run
+#+end_src
+
+** Modifying the Implementation
+1. Edit code blocks in ~PYTHON-GEMINI-REPL.org~
+2. Run ~make tangle~ to regenerate code
+3. Test changes with ~make test~
+4. Use ~make detangle~ guidance for reverse sync (manual)
+
+* Development Workflow
+
+** Standard Development Cycle
+#+begin_src bash
+make setup      # Initial setup
+make lint       # Check code quality  
+make test       # Run tests
+make run        # Run application
+make build      # Create distribution
+#+end_src
+
+** Org-mode Workflow
+#+begin_src bash
+make tangle     # Extract code from org
+make detangle   # Instructions for reverse sync
+make clean-tangled  # Remove generated files
+#+end_src
+
+* Script Architecture
+
+** Common Utilities (~scripts/common.sh~)
+- Project root detection
+- Virtual environment management
+- Package installation helpers
+- Colored output functions
+- Environment variable loading
+
+** Script Conventions
+- All scripts source ~common.sh~
+- Use ~ensure_project_root()~ to establish context
+- Use ~activate_venv()~ for Python environment
+- Use ~print_status()~ for consistent output
+- Handle errors gracefully with proper exit codes
+
+* Next Steps and Extensions
+
+** Planned Enhancements
+1. Multi-provider support (OpenAI, Anthropic, etc.)
+2. Web interface for remote access
+3. Plugin system for extensibility
+4. Conversation branching/checkpointing
+5. Multi-modal inputs (images, audio)
+
+** Architecture Extensions
+- Database backend for conversation storage
+- REST API for programmatic access
+- Jupyter notebook integration
+- VSCode extension
+
+* Git History and Notes
+
+** Key Commits
+- Initial org-mode setup
+- Mermaid tangle support
+- Script refactoring with common utilities
+
+** Git Notes
+Use ~git notes show~ to see detailed implementation notes on commits.
+
+* Troubleshooting
+
+** Common Issues
+1. *Emacs not found*: Install Emacs for org-babel-tangle
+2. *uv not found*: Install with ~curl -LsSf https://astral.sh/uv/install.sh | sh~
+3. *API key missing*: Set GEMINI_API_KEY in .env
+4. *Import errors*: Ensure PYTHONPATH includes src/
+
+** Debug Commands
+#+begin_src bash
+# Check environment
+echo $VIRTUAL_ENV
+echo $PYTHONPATH
+
+# Test imports
+python -c "import gemini_repl"
+
+# Monitor logs
+tail -f logs/gemini.log
+
+# Watch FIFO (in separate terminal)
+cat logs/gemini.log.fifo
+#+end_src

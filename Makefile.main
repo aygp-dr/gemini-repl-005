@@ -1,17 +1,40 @@
-# Main Makefile for org-mode tangling and Python REPL
+# Makefile for Gemini REPL - Simplified with script delegation
 
-.PHONY: help tangle detangle clean-tangled
+.PHONY: help setup lint test build run clean tangle detangle all
+
+# Default target
+all: setup lint test
 
 help:
-	@echo "Org-mode targets:"
-	@echo "  make tangle       - Extract code from org files"
-	@echo "  make detangle     - Update org files from code (manual process)"
-	@echo "  make clean-tangled - Remove all tangled files"
+	@echo "Gemini REPL Development Commands:"
+	@echo "  make setup    - Set up development environment with uv"
+	@echo "  make lint     - Run linters (ruff, mypy)"
+	@echo "  make test     - Run test suite with coverage"
+	@echo "  make build    - Build distribution packages"
+	@echo "  make run      - Run the REPL"
+	@echo "  make clean    - Clean generated files"
 	@echo ""
-	@echo "Python REPL targets (after tangling):"
-	@$(MAKE) -f Makefile.tangled help 2>/dev/null || echo "  Run 'make tangle' first to generate Python targets"
+	@echo "Org-mode Commands:"
+	@echo "  make tangle   - Extract code from PYTHON-GEMINI-REPL.org"
+	@echo "  make detangle - Update org from code (manual process)"
 
-# Tangle org files to extract code
+# Development commands - delegate to scripts
+setup:
+	@./scripts/setup.sh
+
+lint:
+	@./scripts/lint.sh
+
+test:
+	@./scripts/test.sh
+
+build:
+	@./scripts/build.sh
+
+run:
+	@./scripts/run.sh
+
+# Org-mode tangling
 tangle:
 	@echo "Tangling org files..."
 	@if command -v emacs >/dev/null 2>&1; then \
@@ -28,28 +51,45 @@ tangle:
 		exit 1; \
 	fi
 
-# Detangle - update org files from code changes
 detangle:
-	@echo "Detangling is not fully automated in org-mode."
-	@echo "To update org files from code changes:"
-	@echo "1. Open the org file in Emacs"
-	@echo "2. Use org-babel-detangle (C-c C-v C-d) on code blocks"
-	@echo "3. Or manually update the code blocks"
+	@echo "Detangling requires manual Emacs interaction:"
+	@echo "1. Open PYTHON-GEMINI-REPL.org in Emacs"
+	@echo "2. Use C-c C-v C-d on code blocks to update from source files"
 
-# Clean tangled files  
+# Clean up
+clean:
+	@echo "Cleaning generated files..."
+	@rm -rf __pycache__ .pytest_cache build/ dist/ *.egg-info
+	@rm -rf logs/*.log
+	@rm -f conversation.json
+	@find . -type f -name "*.pyc" -delete
+	@find . -type d -name "__pycache__" -delete
+	@echo "✓ Clean complete"
+
+# Clean tangled files
 clean-tangled:
 	@echo "Cleaning tangled files..."
-	rm -rf src/ tests/ .github/
-	rm -f setup.sh .env.example .envrc requirements.txt Dockerfile README.md
-	rm -f architecture.mmd flow.mmd
-	rm -f Makefile.tangled
+	@rm -rf src/ tests/ .github/
+	@rm -f setup.sh .env.example .envrc requirements.txt Dockerfile README.md
+	@rm -f architecture.mmd flow.mmd
+	@rm -f Makefile.tangled
 	@echo "✓ Cleaned all tangled files"
 
-# Pass through to tangled Makefile
-%:
-	@if [ -f Makefile.tangled ]; then \
-		$(MAKE) -f Makefile.tangled $@; \
+# Quick commands
+dev: setup
+	@echo "Development environment ready. Activate with: source .venv/bin/activate"
+
+check: lint test
+	@echo "✓ All checks passed"
+
+# Install pre-commit hooks
+hooks:
+	@if [ -f .venv/bin/activate ]; then \
+		source .venv/bin/activate && \
+		pip install pre-commit && \
+		pre-commit install; \
+		echo "✓ Pre-commit hooks installed"; \
 	else \
-		echo "Error: Makefile.tangled not found. Run 'make tangle' first."; \
+		echo "Error: Virtual environment not found. Run 'make setup' first."; \
 		exit 1; \
 	fi
