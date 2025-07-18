@@ -8,9 +8,8 @@ source "$(dirname "$0")/common.sh"
 #
 # Usage: run.sh [args...]
 
-# Ensure we're in project root and venv is active
+# Ensure we're in project root
 ensure_project_root
-activate_venv
 
 # Load environment variables
 load_env
@@ -25,4 +24,4 @@ fi
 
 # Run the REPL
 print_status "info" "Starting Gemini REPL..."
-exec python -m gemini_repl "$@"
+exec uv run python -m gemini_repl "$@"
