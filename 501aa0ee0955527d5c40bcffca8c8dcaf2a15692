@@ -1,0 +1,28 @@
+## Elisp Configuration and Documentation Improvements
+
+### Changes Made
+1. **Renamed org-babel-config.el to gemini-repl.el**
+   - Updated to comprehensive project-specific Emacs configuration
+   - Added Python LSP support with ruff and mypy integration
+   - Added TRAMP support for remote editing
+   - Created project-specific functions (tangle, test, lint, run)
+   - Added keybindings: C-c g t/T/l/r/s
+
+2. **Removed org-babel-demo.org**
+   - Demonstration file no longer needed
+
+3. **Added README.org support**
+   - Added README.md to .gitignore (generated file)
+   - Created Makefile target: README.md from README.org
+   - Uses emacs batch mode for org-to-markdown export
+
+### Elisp Features
+- Auto-detects gemini-repl project files
+- Configures LSP to use ruff instead of traditional Python linters
+- Sets up org-mode with proper indentation handling
+- Supports remote development over TRAMP
+- Directory-local variables for project settings
+
+### Usage
+In Emacs: (load-file "gemini-repl.el")
+Or add to init.el for auto-loading
