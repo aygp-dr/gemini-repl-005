@@ -1,0 +1,24 @@
+## Tangle Process Implementation
+
+### Setup Details
+- Created Makefile with tangle/detangle targets
+- Added :comments both to org-mode header-args for bidirectional sync
+- Fixed .envrc to use direnv syntax instead of Python
+- Mermaid diagrams tangle to .mmd files without comments (no comment syntax)
+
+### Files Generated from PYTHON-GEMINI-REPL.org:
+- Python source: src/gemini_repl/{__main__.py, core/, utils/, tools/}
+- Configuration: .env.example, .envrc, requirements.txt
+- Documentation: README.md, architecture.mmd, flow.mmd
+- Infrastructure: Dockerfile, .github/workflows/ci.yml
+- Scripts: setup.sh
+- Tests: tests/test_repl.py
+
+### Makefile Strategy
+- Main Makefile handles tangle/detangle operations
+- Tangled Makefile (Makefile.tangled) contains Python project targets
+- Makefile.main preserves the tangle functionality across regenerations
+
+### Known Issues
+- Dockerfile and other non-standard languages lack comment syntax for org-babel
+- Detangle requires manual Emacs interaction (C-c C-v C-d)
