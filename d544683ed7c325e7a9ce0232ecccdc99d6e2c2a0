@@ -1,0 +1,6 @@
+Dependency update prompts:
+
+User ran 'gmake lint test' and encountered missing dependencies.
+Added mypy and pytest-cov to support linting and test coverage as requested.
+
+User feedback: 'can we just uv add the code coverage from the beginning'
