@@ -1,0 +1,22 @@
+## Ruff Formatting Application
+
+### Changes Applied
+- Fixed all bare except clauses (E722) to use specific exceptions
+- Applied consistent formatting across all Python files
+- Changed quotes to double quotes consistently
+- Fixed indentation and spacing
+- No functional changes, only style improvements
+
+### Files Updated
+- src/gemini_repl/__main__.py
+- src/gemini_repl/core/api_client.py
+- src/gemini_repl/core/repl.py
+- src/gemini_repl/tools/tool_system.py
+- src/gemini_repl/utils/context.py
+- src/gemini_repl/utils/logger.py
+- tests/test_repl.py
+
+### Notes
+- These changes were auto-applied by ruff after fixing the org-mode source
+- Ensures consistent code style across the project
+- Ready for validation with expect scripts
