@@ -1,0 +1,78 @@
+## Script Infrastructure Implementation
+
+### Prompts Used
+1. "uv init ; source .venv ; ensure we're tracking the prompts / issues / testing / notes / etc for regenerting this repo / original org mode document. simplify gmake setup lint test build / run"
+2. "if we use scripts to wrap any makefile commands with loops / conditionals use the @./script/{target:s/-/_}.sh with /usr/bin/env bash as the standard"
+3. "should any of those be abstracted into shared utilities / boilerplate"
+4. "use markdown but i generally use org mode; if we have org mode for all documentation other than gh issues and claude code slash commands just do what's right"
+5. "we're on freebsd: use gmake"
+
+### Implementation Approach
+- Created scripts/ directory with common.sh for shared utilities
+- Delegated all complex Makefile logic to dedicated scripts
+- Each script sources common.sh for consistent behavior
+- Added FreeBSD detection for gmake vs make
+
+### Testing Considerations
+- Scripts tested from different directories to ensure path resolution
+- Virtual environment activation tested in both present/absent states
+- Package installation helpers tested with missing dependencies
+- FreeBSD compatibility tested with gmake detection
+
+### Issues Encountered
+1. **FreeBSD make compatibility**
+   - Solution: Added detect_make() function to use gmake when available
+   - Updated error messages to show correct make command
+
+2. **__init__.py files**
+   - Initially considered gitignoring them as "auto-generated"
+   - Realized they're part of tangled output and needed for module imports
+   - Added them to git as they're required for `python -m gemini_repl`
+
+3. **Script path resolution**
+   - Used $(dirname "$0") to ensure scripts find common.sh
+   - find_project_root() walks up directory tree looking for pyproject.toml
+
+### Design Decisions
+1. **Common Utilities (scripts/common.sh)**
+   - Project root detection
+   - Virtual environment management
+   - Package installation helpers
+   - Colored status output
+   - Environment variable loading
+
+2. **Script Conventions**
+   - All scripts use #\!/usr/bin/env bash
+   - Strict error handling with set -euo pipefail
+   - Consistent status messages with print_status()
+   - Help text embedded in script comments
+
+3. **Makefile Simplification**
+   - Main logic moved to scripts
+   - Makefile just calls scripts with @ prefix
+   - Preserves tangle/detangle functionality
+   - Clean separation of concerns
+
+### Script Architecture Benefits
+- Easier to test individual components
+- Better error handling and recovery
+- Consistent user experience
+- Platform-specific adaptations (FreeBSD)
+- Reusable utilities reduce duplication
+
+### Future Considerations
+- Could add script for updating dependencies
+- Could add script for release management
+- Could integrate with CI/CD pipelines
+- Scripts are self-documenting with embedded help
+
+### Files Created/Modified
+- scripts/common.sh - Shared utilities
+- scripts/setup.sh - Environment setup
+- scripts/lint.sh - Code quality checks
+- scripts/test.sh - Test runner
+- scripts/build.sh - Package builder
+- scripts/run.sh - Application launcher
+- scripts/SCRIPT_STYLE_GUIDE.org - Documentation
+- REGENERATION.org - Project regeneration guide
+- Makefile.main - Simplified Makefile
