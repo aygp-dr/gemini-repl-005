@@ -1,0 +1,47 @@
+{
+  "project": "gemini-repl-python",
+  "context_test": {
+    "questions": [
+      {
+        "q": "What language is the REPL written in?",
+        "a": ["Python", "Python 3", "Python 3.11"]
+      },
+      {
+        "q": "What API does it connect to?",
+        "a": ["Gemini", "Gemini API", "Google Gemini"]
+      },
+      {
+        "q": "What's the project structure approach?",
+        "a": ["org-mode", "literate programming", "org-babel"]
+      },
+      {
+        "q": "What logging outputs are supported?",
+        "a": ["file and FIFO", "both", "file + FIFO", "JSON logs"]
+      },
+      {
+        "q": "What build tool is used?",
+        "a": ["uv", "Makefile", "make"]
+      },
+      {
+        "q": "What was the main implementation approach?",
+        "a": ["one-shot", "single org file", "literate programming"]
+      },
+      {
+        "q": "What feature enables multi-turn conversations?",
+        "a": ["context management", "ContextManager", "conversation history"]
+      },
+      {
+        "q": "What provides the development environment?",
+        "a": ["uv", "virtualenv", "venv", ".venv"]
+      },
+      {
+        "q": "What's the default model?",
+        "a": ["gemini-2.0-flash-exp", "gemini-2.0-flash"]
+      },
+      {
+        "q": "What command shows conversation context?",
+        "a": ["/context", "/context show"]
+      }
+    ]
+  }
+}
