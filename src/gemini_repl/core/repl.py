@@ -146,9 +146,7 @@ class GeminiREPL:
                                 part.function_call.name, part.function_call.args
                             )
                             # Add tool response to context
-                            self.context.add_tool_response(
-                                part.function_call.name, tool_response
-                            )
+                            self.context.add_tool_response(part.function_call.name, tool_response)
 
             # Extract text response
             response_text = self._extract_response_text(response)
@@ -247,11 +245,7 @@ Tool Functions:
         print("\n=== Conversation Context ===")
         for msg in messages[-10:]:  # Show last 10 messages
             role = msg["role"].upper()
-            content = (
-                msg["content"][:100] + "..."
-                if len(msg["content"]) > 100
-                else msg["content"]
-            )
+            content = msg["content"][:100] + "..." if len(msg["content"]) > 100 else msg["content"]
             print(f"{role}: {content}")
         print(f"\nTotal messages: {len(messages)}")
         print(f"Total tokens: {self.context.get_token_count()}")
@@ -267,10 +261,7 @@ Tool Functions:
 
     def cmd_save(self, args: str):
         """Save conversation to file."""
-        filename = (
-            args.strip()
-            or f"conversation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        )
+        filename = args.strip() or f"conversation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         path = Path("workspace") / filename
         self.context.save_to_file(path)
         print(f"Conversation saved to: {path}")

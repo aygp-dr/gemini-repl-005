@@ -52,9 +52,7 @@ class Logger:
         if self.log_format == "json":
             return JsonFormatter()
         else:
-            return logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            )
+            return logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
     def _setup_fifo(self):
         """Setup FIFO for real-time log monitoring."""

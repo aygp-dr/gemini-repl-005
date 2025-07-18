@@ -72,9 +72,7 @@ class ContextManager:
 
     def get_messages(self) -> List[Dict[str, str]]:
         """Get messages for API calls."""
-        return [
-            {"role": msg["role"], "content": msg["content"]} for msg in self.messages
-        ]
+        return [{"role": msg["role"], "content": msg["content"]} for msg in self.messages]
 
     def get_token_count(self) -> int:
         """Get total token count."""
@@ -104,8 +102,7 @@ class ContextManager:
             "token_count": self.get_token_count(),
             "estimated_cost": self.get_token_count() * 0.000001,  # Rough estimate
             "duration": str(datetime.now() - self.session_start),
-            "average_message_tokens": self.get_token_count()
-            / max(len(self.messages), 1),
+            "average_message_tokens": self.get_token_count() / max(len(self.messages), 1),
         }
 
     def save_to_file(self, path: Path):

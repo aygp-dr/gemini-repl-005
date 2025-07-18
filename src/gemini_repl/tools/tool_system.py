@@ -17,9 +17,7 @@ class ToolSystem:
         self.repl = repl_instance
         self.workspace = Path(os.getenv("WORKSPACE_DIR", "workspace"))
         self.workspace.mkdir(exist_ok=True)
-        self.enable_self_modify = (
-            os.getenv("ENABLE_SELF_MODIFY", "true").lower() == "true"
-        )
+        self.enable_self_modify = os.getenv("ENABLE_SELF_MODIFY", "true").lower() == "true"
 
         # Tool registry
         self.tools = {
@@ -171,9 +169,7 @@ class ToolSystem:
 
         try:
             result = self.tools[tool_name](**args)
-            self.repl.logger.debug(
-                f"Tool executed: {tool_name}", {"args": args, "result": result}
-            )
+            self.repl.logger.debug(f"Tool executed: {tool_name}", {"args": args, "result": result})
             return result
         except Exception as e:
             error_msg = f"Tool execution failed: {str(e)}"
