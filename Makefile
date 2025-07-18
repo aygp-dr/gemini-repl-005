@@ -44,8 +44,6 @@ tangle:
 			--eval "(org-babel-tangle-file \"PYTHON-GEMINI-REPL.org\")" \
 			--eval "(kill-emacs)"; \
 		echo "✓ Tangled PYTHON-GEMINI-REPL.org"; \
-		mv Makefile Makefile.tangled 2>/dev/null || true; \
-		cp Makefile.main Makefile 2>/dev/null || true; \
 	else \
 		echo "Error: Emacs not found. Please install Emacs to use org-babel-tangle."; \
 		exit 1; \
@@ -83,13 +81,18 @@ check: lint test
 	@echo "✓ All checks passed"
 
 # Install pre-commit hooks
-hooks:
-	@if [ -f .venv/bin/activate ]; then \
-		source .venv/bin/activate && \
+hooks: .venv/bin/activate
+	@echo "Installing pre-commit hooks..."
+	@source .venv/bin/activate && \
 		pip install pre-commit && \
-		pre-commit install; \
-		echo "✓ Pre-commit hooks installed"; \
-	else \
-		echo "Error: Virtual environment not found. Run 'make setup' first."; \
-		exit 1; \
-	fi
+		pre-commit install
+	@echo "✓ Pre-commit hooks installed"
+
+# Generate README.md from README.org
+README.md: README.org
+	@echo "Generating $@ from $<..."
+	@emacs --batch --eval "(require 'org)" \
+		--eval "(find-file \"$<\")" \
+		--eval "(org-md-export-to-markdown)" \
+		--eval "(kill-emacs)"
+	@echo "✓ $@ generated"
