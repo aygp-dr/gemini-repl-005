@@ -1,0 +1,7 @@
+Formatting prompts:
+
+Ruff automatically reformatted source files during linting.
+These changes improve code consistency and readability by:
+- Consolidating multi-line expressions
+- Applying consistent line length limits
+- Following Python style guidelines
