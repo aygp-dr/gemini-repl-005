@@ -75,3 +75,6 @@ Makefile.tangled
 workspace/
 conversation.json
 logs/
+
+# Generated documentation
+README.md

@@ -51,3 +51,6 @@ makefile text eol=lf
 
 # Python notebooks
 *.ipynb text eol=lf
+
+# Generated files
+README.md linguist-generated=true
