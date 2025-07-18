@@ -1,0 +1,5 @@
+SDK migration experiment prompts:
+
+User: 'look at issue 7, review the experiment in experiments/sdk-migration/ ; commit the experiment and then fix the repl. push the current work'
+
+This experiment was created after discovering the REPL was using an incompatible SDK version. The test script proves the new google-genai SDK works correctly.
