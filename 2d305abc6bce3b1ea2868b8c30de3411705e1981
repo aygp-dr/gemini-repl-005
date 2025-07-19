@@ -1,0 +1,37 @@
+TTY integration testing context:
+
+Prompts:
+- User: 'continue working and ensure that the repl through expect, tmux, or tty can do a single call and we have the logs processing'
+- User: 'can you try user bin env' (for portable shebang)
+
+Implementation:
+1. Created expect script (test_expect.exp) for TTY testing
+2. Added Python integration tests with three approaches:
+   - Basic expect script execution
+   - Python pty module for programmatic TTY
+   - Echo pipe for simple log verification
+3. All tests verify logging captures interactions
+
+Key decisions:
+- Used #\!/usr/bin/env expect for portability (FreeBSD)
+- Increased timeout for help command output
+- Parse nested JSON in logs (JsonFormatter + logger._log)
+- Added pytest marker for integration tests
+
+Problems solved:
+- Initial shebang was /usr/bin/expect (not on FreeBSD)
+- Help command pattern needed capital 'C' in Commands
+- Timeouts needed adjustment for API calls
+
+Testing verified:
+✓ REPL responds correctly through TTY
+✓ Commands work (/help, /exit)
+✓ Logging captures all events
+✓ Clean process termination
+
+Timing:
+- Expect script development: ~20 minutes
+- Python integration tests: ~15 minutes
+- Debugging and fixes: ~10 minutes
+
+This completes issue #11 requirements for TTY interaction.
