@@ -1,0 +1,12 @@
+# Documentation Update: Remove execute_python from README
+
+## User Prompt
+"Can you make sure we don't have execute_python - Run Python code (sandboxed) in the README"
+
+## Change
+Removed execute_python from the tool list in README.org as this tool was completely removed from the codebase for security reasons (see issue #25).
+
+## Related Work
+- Commit 5fb70ab: Removed execute_python implementation
+- Issue #25: Security concerns with Python execution
+- Documentation now accurately reflects available tools
