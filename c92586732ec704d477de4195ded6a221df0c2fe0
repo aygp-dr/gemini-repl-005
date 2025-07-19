@@ -1,0 +1,58 @@
+# Rate Limiter Implementation
+
+## User Prompt
+"Can we have a per minute ticker/timer to ensure that for our model we are unlikely to rate limit ourselves: we don't need to thrash the endpoint"
+
+## Implementation Decisions
+
+### 1. Rate Limiting Strategy
+- Implemented per-minute request tracking using deque
+- Added 90% safety margin to avoid hitting actual limits
+- Visual countdown display when approaching limits
+- Model-specific RPM limits based on official documentation
+
+### 2. Design Choices
+- RateLimiter class for core functionality
+- GlobalRateLimiter singleton for app-wide state
+- Integration at API client level
+- Non-blocking with wait display
+
+### 3. Model Limits (Free Tier)
+- gemini-2.0-flash-lite: 30 RPM (recommended for dev)
+- gemini-2.0-flash: 15 RPM
+- gemini-2.5-flash: 10 RPM
+- gemini-2.5-pro: 5 RPM
+
+### 4. UX Considerations
+- Shows clear countdown: "Waiting 43.8s to avoid hitting limit..."
+- Status bar format: [████░░░░] 8/27 RPM
+- Automatic retry with exponential backoff
+- Non-intrusive during normal operation
+
+## Issues and Considerations
+
+### 1. Initial Implementation Issues
+- Long wait times due to oldest request tracking
+- Fixed by proper time window calculation
+- Added visual feedback for better UX
+
+### 2. Testing Challenges
+- Rate limiter works correctly but tests take time
+- Added @pytest.mark.slow for integration tests
+- Mock testing for unit tests
+
+### 3. Future Improvements
+- Consider token-based rate limiting
+- Add request queue management
+- Support for burst allowances
+- Integration with session management
+
+## Related Issues
+- #24: Rate limiter UX feature (created)
+- #25: Remove execute_python security risk (closed)
+
+## Key Files
+- src/gemini_repl/utils/rate_limiter.py - Core implementation
+- src/gemini_repl/core/api_client.py - Integration point
+- tests/test_rate_limiter.py - Comprehensive tests
+- docs/RATE_LIMITS.md - Model recommendations
