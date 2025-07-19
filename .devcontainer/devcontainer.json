@@ -1,0 +1,36 @@
+{
+  "name": "Gemini REPL Development",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11-bullseye",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "configureZshAsDefaultShell": true,
+      "installOhMyZsh": true,
+      "upgradePackages": true
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "tamasfe.even-better-toml"
+      ]
+    }
+  },
+
+  "postCreateCommand": "bash -c 'curl -LsSf https://astral.sh/uv/install.sh | sh && source $HOME/.cargo/env && make setup && echo \"source .venv/bin/activate\" >> ~/.bashrc && echo \"source .venv/bin/activate\" >> ~/.zshrc'",
+
+  "remoteUser": "vscode",
+  
+  "mounts": [],
+  
+  "forwardPorts": [],
+  
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/home/vscode/.cargo/bin"
+  }
+}
