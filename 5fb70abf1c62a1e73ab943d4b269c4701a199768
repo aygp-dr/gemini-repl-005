@@ -1,0 +1,25 @@
+# Python Execution Removal
+
+## User Prompt
+"Can you remove execute_python from supported tools since I don't want to test it and it's not core for self-hosting"
+
+## Implementation
+- Removed execute_python from tool registry
+- Removed function declaration for Gemini API
+- Deleted entire execute_python method
+- Removed related unit tests
+
+## Security Considerations
+- Execute_python had basic sandboxing but lacked proper security
+- No resource limits (CPU, memory)
+- No process isolation
+- Potential for Python internals exploitation
+
+## Alternatives Documented
+1. E2B (Anthropic's approach) - Container isolation
+2. Pyodide in Deno - WebAssembly isolation
+3. Basic subprocess with resource limits
+4. Complete removal (chosen approach)
+
+## Related Issue
+- #25: Security: Remove or properly sandbox execute_python tool (closed)
