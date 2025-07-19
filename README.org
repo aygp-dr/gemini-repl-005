@@ -48,15 +48,12 @@ The Makefile includes these main targets:
 
 ** Features
 
-- ✅ *Core REPL Event Loop* - Interactive command-line interface with slash commands
-- ✅ *Logging System* - JSON-formatted logs with file and FIFO output
-- ✅ *Context Management* - Full conversation history with token tracking
-- ✅ *Tool Use* - File I/O operations and Python code execution
-- ✅ *Self-Hosting* - Can modify its own source code and restart
-
-** Documentation
-
-For the latest Gemini API documentation, see: [[https://ai.google.dev/gemini-api/docs][Google AI Gemini API Docs]]
+- ✅ *Interactive REPL* - Command-line interface with slash commands
+- ✅ *AI Integration* - Conversational interface powered by Gemini
+- ✅ *Tool System* - File operations (read, write, list)
+- ✅ *Session Management* - Persistent conversations with resumption
+- ✅ *Rate Limiting* - Visual feedback to avoid API limits
+- ✅ *Logging System* - Comprehensive JSON logging
 
 * Installation
 
@@ -116,84 +113,29 @@ The REPL includes built-in tools for file operations:
 - ~write_file~ - Create/update files
 - ~list_files~ - List directory contents
 
-* API Migration Note
+* Educational Approach
 
-This implementation currently uses the ~google-generativeai~ library. The newer ~google-genai~ SDK provides a different API:
+This project demonstrates key concepts in building AI-powered developer tools:
 
-** Current Implementation (google-generativeai)
-#+begin_src python
-import google.generativeai as genai
+** Learning Objectives
 
-genai.configure(api_key=api_key)
-model = genai.GenerativeModel('gemini-pro')
-response = model.generate_content("Hello, Gemini!")
-print(response.text)
-#+end_src
+1. *Conversational AI Integration* - Connect to and use the Gemini API
+2. *Tool-Based Systems* - Implement function calling for AI agents  
+3. *Context Management* - Maintain conversation state across sessions
+4. *Rate Limiting* - Handle API quotas gracefully with visual feedback
+5. *Security Considerations* - Path validation and sandboxing
 
-** New SDK (google-genai) - Examples
-#+begin_src python
-# Basic usage
-from google import genai
+** Known Limitations
 
-client = genai.Client()
-response = client.models.generate_content(
-    model="gemini-2.0-flash-exp",
-    contents="Explain how AI works in a few words",
-)
-print(response.text)
-#+end_src
+- Tool dispatch is inconsistent (see issue #26)
+- The AI may not always use tools when expected
+- This is an experimental system for learning
 
-#+begin_src python
-# Structured output with Pydantic
-from google import genai
-from pydantic import BaseModel
+** Teaching Resources
 
-class Recipe(BaseModel):
-    recipe_name: str
-    ingredients: list[str]
-
-client = genai.Client()
-response = client.models.generate_content(
-    model="gemini-2.0-flash-exp",
-    contents="List a few popular cookie recipes",
-    config={
-        "response_mime_type": "application/json",
-        "response_schema": list[Recipe],
-    },
-)
-recipes = response.parsed
-#+end_src
-
-#+begin_src python
-# Function calling
-from google import genai
-from google.genai import types
-
-schedule_meeting = {
-    "name": "schedule_meeting",
-    "description": "Schedule a meeting",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "attendees": {"type": "array", "items": {"type": "string"}},
-            "date": {"type": "string"},
-            "time": {"type": "string"},
-            "topic": {"type": "string"},
-        },
-        "required": ["attendees", "date", "time", "topic"],
-    },
-}
-
-client = genai.Client()
-tools = types.Tool(function_declarations=[schedule_meeting])
-config = types.GenerateContentConfig(tools=[tools])
-
-response = client.models.generate_content(
-    model="gemini-2.0-flash-exp",
-    contents="Schedule a meeting with Bob and Alice",
-    config=config,
-)
-#+end_src
+- [[https://ai.google.dev/gemini-api/docs][Gemini API Documentation]]
+- [[https://github.com/aygp-dr/gemini-repl-005/issues][Project Issues]] - Real challenges and solutions
+- [[experiments/][Experiments Directory]] - Test scripts and explorations
 
 * Development
 
@@ -231,12 +173,19 @@ make test
 make lint
 #+end_src
 
+** Key Files for Learning
+
+- ~src/gemini_repl/core/api_client.py~ - Gemini API integration
+- ~src/gemini_repl/tools/codebase_tools.py~ - Tool implementations
+- ~src/gemini_repl/utils/rate_limiter.py~ - Rate limiting example
+- ~experiments/tool-calling/~ - Tool dispatch experiments
+
 ** Contributing
 
-1. Make changes to ~PYTHON-GEMINI-REPL.org~
-2. Run ~make tangle~ to extract code
-3. Test with ~make test~
-4. Submit PR with tests
+1. Fork and experiment freely
+2. Try fixing issue #26 (tool dispatch)
+3. Add your own tools
+4. Share what you learn
 
 * License
 

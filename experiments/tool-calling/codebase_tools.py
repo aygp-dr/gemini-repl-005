@@ -163,10 +163,19 @@ def test_codebase_tools():
     
     # Test queries for codebase work
     test_queries = [
+        # Should trigger tool calls
         "List all Python files in the src directory",
-        "Search for 'class.*REPL' in Python files",
+        "Search for 'class.*REPL' in Python files", 
         "Read the main REPL file src/gemini_repl/core/repl.py",
         "What's the structure of this codebase? Show me the main directories and files",
+        "Show me the headers in README.md",
+        "Read README.org and list the main sections",
+        
+        # Should NOT trigger tool calls (just analysis/generation)
+        "Implement fibonacci in Scheme",
+        "What is the difference between map and filter?",
+        "Explain how Python's GIL works",
+        "Write a haiku about recursive functions",
     ]
     
     for i, query in enumerate(test_queries, 1):
