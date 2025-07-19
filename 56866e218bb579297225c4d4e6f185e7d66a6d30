@@ -1,0 +1,32 @@
+CLAUDE.md creation context:
+
+Prompts:
+- User: 'remember at each step after a commit to include in git notes the prompts used...'
+- User: 'no, put it in our project directory'
+- Request to track builder context for reconstruction
+
+Purpose:
+- Provide persistent context for Claude Code sessions
+- Document decisions and patterns for future builders
+- Track work sessions with detailed implementation notes
+- Help reconstruct project state from scratch
+
+Key content:
+- Project overview and current state
+- Build/test command reference
+- SDK migration work session details
+- Problems encountered and solutions
+- Testing approaches and patterns
+- Environment setup guide
+
+Design decisions:
+- Put in project root (not .claude/) for visibility
+- Include both high-level and detailed context
+- Track prompts, timing, and decision rationale
+- Complement git notes with richer detail
+
+Pre-commit:
+- Added newline at end of file
+- TODO warning for re-enabling tools (expected)
+
+This file serves as the primary context source when starting a new /builder session.
