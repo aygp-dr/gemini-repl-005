@@ -4,27 +4,36 @@
 - Models: https://ai.google.dev/gemini-api/docs/models
 - Rate Limits: https://ai.google.dev/gemini-api/docs/rate-limits
 
-## Current Rate Limits
+## Current Rate Limits (Free Tier)
 
 The Gemini API has rate limits that vary by model:
 
-### gemini-2.0-flash-exp (Current Default)
-- **10 requests per minute** (very limited)
-- Good for testing but hits limits quickly
+### Best Models for Development (Free Tier)
 
-### Alternative Models
+1. **gemini-2.0-flash-lite** ⭐ RECOMMENDED
+   - **30 RPM** (Requests per minute) 
+   - **1,000,000 TPM** (Tokens per minute)
+   - Best for rapid development and testing
 
-1. **gemini-1.5-flash** 
-   - Higher rate limits
-   - Less experimental, more stable
-   
-2. **gemini-1.5-pro**
-   - Higher rate limits for paid tiers
-   - Better for production use
+2. **gemini-2.0-flash**
+   - **15 RPM**
+   - **1,000,000 TPM**
+   - Good balance of features and limits
 
-3. **gemini-2.0-flash-preview-image-generation**
-   - Suggested by error message for higher quotas
-   - Includes image generation capabilities
+3. **gemini-2.5-flash-lite-preview-06-17**
+   - **15 RPM**
+   - **250,000 TPM**
+   - Newer model with decent limits
+
+4. **gemini-2.5-flash**
+   - **10 RPM**
+   - **250,000 TPM**
+   - Latest features but lower rate limits
+
+### Models to Avoid (Free Tier)
+- **gemini-2.5-pro**: Only 5 RPM
+- **gemini-2.0-flash-exp**: 10 RPM (our previous default)
+- **gemini-1.5-flash**: Deprecated, 15 RPM
 
 ## Configuration
 
@@ -65,8 +74,11 @@ Check your current usage:
 
 For development and testing:
 ```bash
-# Use gemini-1.5-flash for better rate limits
-export GEMINI_MODEL="gemini-1.5-flash"
+# Use gemini-2.0-flash-lite for best rate limits (30 RPM)
+export GEMINI_MODEL="gemini-2.0-flash-lite"
+
+# Or for newer features with reasonable limits (15 RPM)
+export GEMINI_MODEL="gemini-2.0-flash"
 ```
 
 For production:

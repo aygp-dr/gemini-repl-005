@@ -20,9 +20,9 @@ class GeminiClient:
             raise ValueError("GEMINI_API_KEY not set in environment")
 
         self.client = genai.Client(api_key=api_key)
-        # Use lighter model by default to avoid rate limits
-        # Options: gemini-2.0-flash-exp, gemini-1.5-flash, gemini-2.0-flash-lite (if available)
-        self.model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+        # Use model with best rate limits for free tier (30 RPM)
+        # See docs/RATE_LIMITS.md for details
+        self.model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-lite")
 
     def send_message(
         self, messages: List[Dict[str, str]], tools: Optional[List[Dict[str, Any]]] = None
