@@ -7,13 +7,14 @@
 import os
 import readline
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Callable
 from datetime import datetime
 
 from ..utils.logger import Logger
 from ..utils.context import ContextManager
 from ..utils.paths import PathManager
 from ..utils.jsonl_logger import JSONLLogger
+from ..utils.session import SessionManager
 from .api_client import GeminiClient
 from ..tools.tool_system import ToolSystem
 
@@ -21,14 +22,26 @@ from ..tools.tool_system import ToolSystem
 class GeminiREPL:
     """Main REPL class implementing the event loop."""
 
-    def __init__(self):
+    def __init__(self, session_id: Optional[str] = None, resume_session: Optional[str] = None):
         # Initialize path manager first
         self.paths = PathManager()
-        
+
+        # Initialize session manager
+        self.session_manager = SessionManager(self.paths.project_dir, session_id)
+
+        # Handle session resumption
+        if resume_session:
+            try:
+                messages = self.session_manager.load_session(resume_session)
+                self.session_manager.session_id = resume_session
+                print(f"Resumed session {resume_session} with {len(messages)} messages")
+            except FileNotFoundError:
+                print(f"Session {resume_session} not found, starting new session")
+
         # Initialize other components with paths
         self.logger = Logger(log_file=str(self.paths.get_log_file()))
         self.context = ContextManager(context_file=str(self.paths.context_file))
-        self.jsonl_logger = JSONLLogger(self.paths.get_jsonl_file())
+        self.jsonl_logger = JSONLLogger(self.paths.get_jsonl_file(), self.session_manager)
         self.client = GeminiClient()
         self.tools = ToolSystem(self)
         self.running = True
@@ -39,15 +52,18 @@ class GeminiREPL:
         readline.parse_and_bind("set editing-mode emacs")  # Ensure arrow keys work
         readline.set_history_length(1000)
         self._load_history()
-        
-        # Log startup with project info
-        self.logger.info("REPL started", {
-            "timestamp": datetime.now().isoformat(),
-            "project": self.paths.project_name,
-            "project_dir": str(self.paths.project_dir)
-        })
 
-    def _init_commands(self) -> Dict[str, callable]:
+        # Log startup with project info
+        self.logger.info(
+            "REPL started",
+            {
+                "timestamp": datetime.now().isoformat(),
+                "project": self.paths.project_name,
+                "project_dir": str(self.paths.project_dir),
+            },
+        )
+
+    def _init_commands(self) -> Dict[str, Callable]:
         """Initialize slash commands."""
         return {
             "/help": self.cmd_help,
@@ -62,6 +78,7 @@ class GeminiREPL:
             "/workspace": self.cmd_workspace,
             "/debug": self.cmd_debug,
             "/project": self.cmd_project,
+            "/sessions": self.cmd_sessions,
         }
 
     def _load_history(self):
@@ -90,6 +107,7 @@ class GeminiREPL:
 ╚══════════════════════════════════════╝
 """
         print(banner)
+        print(f"Session ID: {self.session_manager.session_id}")
 
     def run(self):
         """Main event loop."""
@@ -154,9 +172,7 @@ class GeminiREPL:
             self.context.add_message("user", user_input)
 
             # Get response (tools disabled for now until SDK support is complete)
-            response = self.client.send_message(
-                self.context.get_messages()
-            )
+            response = self.client.send_message(self.context.get_messages())
 
             # Handle tool calls if present (disabled for now)
             # TODO: Re-enable when tool support is properly implemented
@@ -180,7 +196,7 @@ class GeminiREPL:
 
             # Display response with metadata
             self._display_response(response_text, response)
-            
+
             # Log response to JSONL
             metadata = self._extract_metadata(response)
             self.jsonl_logger.log_assistant_response(response_text, metadata)
@@ -252,6 +268,7 @@ Available Commands:
   /workspace    - Show workspace contents
   /debug        - Toggle debug mode
   /project      - Show project information
+  /sessions     - List available sessions
 
 Tool Functions:
   The AI can read, write, and modify files in the workspace directory.
@@ -333,7 +350,7 @@ Tool Functions:
         new_level = "DEBUG" if current != 10 else "INFO"  # 10 is DEBUG level
         self.logger.set_level(new_level)
         print(f"Debug mode: {'ON' if new_level == 'DEBUG' else 'OFF'}")
-    
+
     def cmd_project(self, args: str):
         """Show project information."""
         info = self.paths.info()
@@ -344,8 +361,36 @@ Tool Functions:
         print(f"Context File: {info['context_file']}")
         print(f"Logs Dir:     {info['logs_dir']}")
         print(f"Working Dir:  {info['cwd']}")
-        print(f"\nShared context across sessions: YES")
-        print(f"Session cache for Gemini API: ENABLED")
+        print("\nShared context across sessions: YES")
+        print("Session cache for Gemini API: ENABLED")
+
+    def cmd_sessions(self, args: str):
+        """Show available sessions."""
+        sessions = self.session_manager.list_sessions()
+
+        if not sessions:
+            print("No sessions found")
+            return
+
+        print("\n=== Available Sessions ===")
+        print(f"Current session: {self.session_manager.session_id}\n")
+
+        for session in sessions[:10]:  # Show last 10 sessions
+            session_id = session["session_id"]
+            is_current = " (current)" if session_id == self.session_manager.session_id else ""
+
+            print(f"Session: {session_id}{is_current}")
+            print(f"  Messages: {session['message_count']}")
+            print(f"  Modified: {session['modified']}")
+
+            if session["first_timestamp"] and session["last_timestamp"]:
+                print(f"  Duration: {session['first_timestamp']} → {session['last_timestamp']}")
+            print()
+
+        if len(sessions) > 10:
+            print(f"... and {len(sessions) - 10} more sessions")
+
+        print("\nTo resume a session: gemini-repl --resume <session-id>")
 
 
 # REPL Event Loop:1 ends here

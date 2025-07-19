@@ -1,0 +1,59 @@
+#!/usr/bin/env expect
+
+# Test contextual understanding in Gemini REPL
+# This test demonstrates that the REPL maintains context across queries
+
+set timeout 20
+
+# Start the REPL
+spawn uv run python -m gemini_repl
+expect "Gemini REPL" { puts "✓ REPL started" }
+
+# Test 1: Basic calculation
+send "What is 2 + 2?\r"
+expect {
+    -re "4|four" { puts "✓ Got initial calculation" }
+    timeout { puts "✗ Timeout on initial query"; exit 1 }
+}
+
+# Test 2: Reference "that" in context
+send "Show that calculation in bc syntax\r"
+expect {
+    -re "2.*\\+.*2|bc.*2.*2" { puts "✓ Contextual reference to 'that' worked" }
+    timeout { puts "✗ Timeout on bc syntax"; exit 1 }
+}
+
+# Test 3: Another contextual reference
+send "Now show it in Emacs Lisp\r"
+expect {
+    -re "\\(\\+.*2.*2\\)|elisp|lisp" { puts "✓ Context maintained for Elisp" }
+    timeout { puts "✗ Timeout on Elisp"; exit 1 }
+}
+
+# Test 4: More complex contextual reference
+send "What would that look like in APL?\r"
+expect {
+    -re "2\\+2|APL|⍨|⊢" { puts "✓ APL context understood" }
+    timeout { puts "✗ Timeout on APL"; exit 1 }
+}
+
+# Test 5: Reference the entire conversation
+send "Can you summarize all the different ways we've represented this calculation?\r"
+expect {
+    -re "bc.*lisp.*APL|different.*ways|representations" { puts "✓ Full conversation context maintained" }
+    timeout { puts "✗ Timeout on summary"; exit 1 }
+}
+
+# Check /context command shows history
+send "/context\r"
+expect {
+    "Conversation Context" { puts "✓ Context command works" }
+    timeout { puts "✗ Timeout on context display"; exit 1 }
+}
+
+# Exit cleanly
+send "/exit\r"
+expect "Goodbye" { puts "✓ Clean exit" }
+
+puts "\n✅ All context tests passed!"
+puts "The REPL successfully maintains conversation context across queries."

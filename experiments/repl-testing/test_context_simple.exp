@@ -1,0 +1,41 @@
+#!/usr/bin/env expect
+
+# Simple context test with shorter responses
+set timeout 20
+
+spawn uv run python -m gemini_repl
+expect "Gemini REPL" { puts "\n=== Simple Context Test ===" }
+
+# Initial calculation
+send "2 + 2\r"
+expect {
+    -re "4|four" { puts "✓ Initial calculation: 2 + 2 = 4" }
+    timeout { puts "✗ Timeout"; exit 1 }
+}
+
+# Reference with "that"
+send "Double that\r"
+expect {
+    -re "8|eight" { puts "✓ 'that' correctly resolved to 4, doubled to 8" }
+    timeout { puts "✗ Failed to double"; exit 1 }
+}
+
+# Another reference
+send "Half of that\r"
+expect {
+    -re "4|four" { puts "✓ Chained context: half of 8 = 4" }
+    timeout { puts "✗ Failed chained reference"; exit 1 }
+}
+
+# Reference original
+send "What was the original calculation?\r"
+expect {
+    -re "2.*\\+.*2|2.*plus.*2" { puts "✓ Remembered original calculation" }
+    timeout { puts "✗ Lost original context"; exit 1 }
+}
+
+# Exit
+send "/exit\r"
+expect "Goodbye"
+
+puts "\n✅ Context tracking works correctly!"

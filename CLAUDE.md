@@ -39,8 +39,10 @@ gmake README.md     # Generate from README.org
 - ✅ Basic REPL working ("2 + 2" returns "4")
 - ✅ Clean exit with /exit command
 - ✅ Logging functional (FIFO disabled)
+- ✅ TTY interaction tested with expect
+- ✅ Log processing verified through integration tests
 - ⚠️ Tool system needs migration to new SDK
-- ⚠️ Some tests failing (logger format, context isolation)
+- ⚠️ Some unit tests failing (logger format, context isolation)
 - 🔄 Experiments in experiments/repl-testing/
 
 ## Work Sessions

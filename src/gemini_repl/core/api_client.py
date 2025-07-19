@@ -26,22 +26,21 @@ class GeminiClient:
         """Send message to Gemini API with optional tools."""
         # For now, we'll use a simple approach without conversation history
         # TODO: Research proper conversation handling in new SDK
-        
+
         # Get the last user message
         last_user_message = None
         for msg in reversed(messages):
             if msg["role"] == "user":
                 last_user_message = msg["content"]
                 break
-        
+
         if not last_user_message:
             raise ValueError("No user message found")
 
-        # Send request
+        # Send request (ignoring tools for now)
         try:
             response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=last_user_message
+                model=self.model_name, contents=last_user_message
             )
             return response
 

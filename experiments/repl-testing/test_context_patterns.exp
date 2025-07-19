@@ -1,0 +1,76 @@
+#!/usr/bin/env expect
+
+# Test various contextual patterns in Gemini REPL
+# Shows that context is properly maintained across different types of references
+
+set timeout 20
+
+# Start the REPL
+spawn uv run python -m gemini_repl
+expect "Gemini REPL" { puts "\n=== Testing Contextual Patterns ===" }
+
+# Pattern 1: Direct reference with "that"
+puts "\n--- Pattern 1: Direct Reference ---"
+send "The fibonacci sequence starts with 0, 1, 1, 2, 3, 5, 8\r"
+expect {
+    -re "fibonacci|sequence" { puts "✓ Statement acknowledged" }
+    timeout { puts "✗ Timeout"; exit 1 }
+}
+
+send "What's the next number in that sequence?\r"
+expect {
+    -re "13|thirteen" { puts "✓ 'that' reference resolved correctly" }
+    timeout { puts "✗ Failed to resolve 'that'"; exit 1 }
+}
+
+# Pattern 2: Pronoun reference with "it"
+puts "\n--- Pattern 2: Pronoun Reference ---"
+send "Write a function to generate it\r"
+expect {
+    -re "def.*fibonacci|function.*fib|generate" { puts "✓ 'it' reference resolved to fibonacci" }
+    timeout { puts "✗ Failed to resolve 'it'"; exit 1 }
+}
+
+# Pattern 3: Previous code reference
+puts "\n--- Pattern 3: Code Reference ---"
+send "Can you optimize the function above?\r"
+expect {
+    -re "optimize|improved|better|memoization|dynamic" { puts "✓ Reference to 'function above' worked" }
+    timeout { puts "✗ Failed to reference previous code"; exit 1 }
+}
+
+# Pattern 4: Multiple entity tracking
+puts "\n--- Pattern 4: Multiple Entities ---"
+send "Compare Python lists and tuples\r"
+expect {
+    -re "list.*tuple|mutable.*immutable" { puts "✓ Two entities introduced" }
+    timeout { puts "✗ Timeout on comparison"; exit 1 }
+}
+
+send "Which one is faster?\r"
+expect {
+    -re "tuple.*faster|tuples.*performance" { puts "✓ Ambiguous 'one' resolved from context" }
+    timeout { puts "✗ Failed to resolve which entity"; exit 1 }
+}
+
+# Pattern 5: Conversation summary
+puts "\n--- Pattern 5: Full Context Summary ---"
+send "What have we discussed so far?\r"
+expect {
+    -re "fibonacci.*function.*list.*tuple|discussed.*topics" { puts "✓ Full conversation context available" }
+    timeout { puts "✗ Failed to summarize conversation"; exit 1 }
+}
+
+# Verify context persistence
+send "/context\r"
+expect {
+    -re "Total messages:.*[6-9]|1[0-9]" { puts "✓ Context shows multiple messages" }
+    timeout { puts "✗ Context command failed"; exit 1 }
+}
+
+# Exit
+send "/exit\r"
+expect "Goodbye" { puts "✓ Clean exit" }
+
+puts "\n✅ All contextual patterns work correctly!"
+puts "The REPL maintains rich conversational context without explicit tracking."

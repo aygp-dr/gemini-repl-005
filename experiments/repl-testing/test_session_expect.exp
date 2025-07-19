@@ -1,0 +1,73 @@
+#!/usr/bin/env expect
+
+# Test session management functionality
+set timeout 10
+
+puts "\n=== Testing Session Management ==="
+
+# Test 1: Start a named session
+puts "\n--- Test 1: Named Session ---"
+spawn uv run python -m gemini_repl --name test-session
+expect {
+    "Using named session 'test-session'" { puts "✓ Named session created" }
+    timeout { puts "✗ Failed to create named session"; exit 1 }
+}
+expect "Session ID:" { puts "✓ Session ID displayed" }
+
+# Send a test message
+send "My favorite color is blue\r"
+expect {
+    -re "favorite.*color|blue" { puts "✓ Message sent" }
+    timeout { puts "✗ Message timeout"; exit 1 }
+}
+
+# Exit
+send "/exit\r"
+expect "Goodbye" { puts "✓ Clean exit from named session" }
+
+# Test 2: Resume the named session
+puts "\n--- Test 2: Resume Named Session ---"
+spawn uv run python -m gemini_repl --resume test-session
+expect {
+    "Resuming session 'test-session'" { puts "✓ Resuming by name" }
+    timeout { puts "✗ Failed to resume session"; exit 1 }
+}
+
+# Check context is preserved
+send "What is my favorite color?\r"
+expect {
+    -re "blue|favorite.*color.*blue" { puts "✓ Context preserved!" }
+    -re "don't know|not sure|What color" { puts "✗ Context lost"; exit 1 }
+    timeout { puts "✗ Context check timeout"; exit 1 }
+}
+
+# Check sessions list
+send "/sessions\r"
+expect {
+    "Available Sessions" { puts "✓ Sessions command works" }
+    timeout { puts "✗ Sessions command timeout"; exit 1 }
+}
+
+# Exit
+send "/exit\r"
+expect "Goodbye"
+
+# Test 3: Start another named session
+puts "\n--- Test 3: Different Named Session ---"
+spawn uv run python -m gemini_repl --name another-test
+expect {
+    "Using named session 'another-test'" { puts "✓ Second named session" }
+    timeout { puts "✗ Failed second session"; exit 1 }
+}
+
+send "Remember the number 42\r"
+expect {
+    -re "42|remember" { puts "✓ Message in second session" }
+    timeout { puts "✗ Timeout"; exit 1 }
+}
+
+send "/exit\r"
+expect "Goodbye"
+
+puts "\n✅ All session tests passed!"
+puts "Named sessions make it easy to resume conversations without UUIDs."
