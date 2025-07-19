@@ -3,10 +3,10 @@
 #+DATE: 2025-01-17
 
 [[https://img.shields.io/badge/version-0.1.0-blue.svg]]
-[[https://img.shields.io/badge/status-draft-orange.svg]]
-[[https://img.shields.io/badge/stability-experimental-red.svg]]
-[[https://img.shields.io/badge/purpose-educational-green.svg]]
-[[https://img.shields.io/badge/production-not%20ready-critical.svg]]
+[[https://img.shields.io/badge/python-3.11+-blue.svg]]
+[[https://img.shields.io/badge/license-MIT-green.svg]]
+[[https://img.shields.io/badge/status-experimental-orange.svg]]
+[[https://img.shields.io/badge/purpose-educational-yellow.svg]]
 
 * Overview
 

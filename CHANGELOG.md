@@ -8,8 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2025-01-19
 
 ### Overview
-Initial release of Gemini REPL - a conversational AI REPL with basic tool support.
-**Status: Not production ready** - This is an experimental release for development and testing.
+Initial release of Gemini REPL - a conversational AI REPL with basic tool support for educational and experimental use.
 
 ### Added
 - Core REPL event loop with slash commands

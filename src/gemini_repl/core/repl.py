@@ -115,7 +115,6 @@ class GeminiREPL:
 ║      🌟 Gemini REPL v{__version__} 🌟      ║
 ║  Python-powered AI conversations     ║
 ║  Type /help for available commands   ║
-║  Status: Experimental/Educational    ║
 ╚══════════════════════════════════════╝
 """
         print(banner)

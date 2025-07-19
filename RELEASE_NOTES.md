@@ -1,11 +1,13 @@
 # Release Notes - v0.1.0
 
 **Release Date:** January 19, 2025  
-**Status:** Experimental / Educational / Not Production Ready
+**Status:** Experimental / Educational  
+**Python:** 3.11+  
+**License:** MIT
 
 ## Overview
 
-This is the initial experimental release of Gemini REPL, a conversational AI REPL with basic tool support. This release is intended for educational purposes and development testing only.
+Initial release of Gemini REPL, a conversational AI REPL with basic tool support for educational and experimental use.
 
 ## What's Included
 
@@ -62,12 +64,8 @@ The next release will focus on:
 
 ## Security Notice
 
-This software is experimental and should not be used in production environments. The execute_python tool has been removed due to security concerns.
+The execute_python tool has been removed due to security concerns. File operations are sandboxed to the current directory.
 
 ## Contributing
 
 See CONTRIBUTING.md for guidelines on how to contribute to this project.
-
----
-
-**Remember:** This is v0.1.0 - an experimental, educational release not suitable for production use.
