@@ -212,17 +212,21 @@ class GeminiREPL:
     def _handle_tool_calls(self, response, user_input: str):
         """Handle tool calls and return final response."""
         if not self.tools_enabled:
+            self.logger.debug("Tools disabled")
             return response
 
         # Check if response contains tool calls
         if not (hasattr(response, "candidates") and response.candidates):
+            self.logger.debug("No candidates in response")
             return response
 
         candidate = response.candidates[0]
         if not (hasattr(candidate.content, "parts") and candidate.content.parts):
+            self.logger.debug("No parts in candidate content")
             return response
 
         # Look for function calls
+        self.logger.debug(f"Checking {len(candidate.content.parts)} parts for function calls")
         for part in candidate.content.parts:
             if hasattr(part, "function_call") and part.function_call:
                 function_call = part.function_call

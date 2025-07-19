@@ -5,6 +5,7 @@
 """Gemini API client implementation."""
 
 import os
+import time
 from typing import List, Dict, Any, Optional
 from google import genai
 from google.genai import types
@@ -19,7 +20,9 @@ class GeminiClient:
             raise ValueError("GEMINI_API_KEY not set in environment")
 
         self.client = genai.Client(api_key=api_key)
-        self.model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
+        # Use lighter model by default to avoid rate limits
+        # Options: gemini-2.0-flash-exp, gemini-1.5-flash, gemini-2.0-flash-lite (if available)
+        self.model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 
     def send_message(
         self, messages: List[Dict[str, str]], tools: Optional[List[Dict[str, Any]]] = None
@@ -37,16 +40,28 @@ class GeminiClient:
             tool_declarations = types.Tool(function_declarations=tools)
             config = types.GenerateContentConfig(tools=[tool_declarations])
 
-        try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=contents,
-                config=config
-            )
-            return response
+        # Retry logic for rate limits
+        max_retries = 3
+        retry_delay = 10  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=contents,
+                    config=config
+                )
+                return response
 
-        except Exception as e:
-            raise Exception(f"API request failed: {e}")
+            except Exception as e:
+                error_str = str(e)
+                if "429" in error_str and "RESOURCE_EXHAUSTED" in error_str:
+                    if attempt < max_retries - 1:
+                        print(f"⏳ Rate limit hit, waiting {retry_delay}s... (attempt {attempt + 1}/{max_retries})")
+                        time.sleep(retry_delay)
+                        retry_delay *= 1.5  # Exponential backoff
+                        continue
+                raise Exception(f"API request failed: {e}")
 
     def _convert_messages_to_contents(self, messages: List[Dict[str, str]]) -> List[types.Content]:
         """Convert message history to Gemini Content format."""
