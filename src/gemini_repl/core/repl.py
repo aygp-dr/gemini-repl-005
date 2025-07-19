@@ -12,6 +12,8 @@ from datetime import datetime
 
 from ..utils.logger import Logger
 from ..utils.context import ContextManager
+from ..utils.paths import PathManager
+from ..utils.jsonl_logger import JSONLLogger
 from .api_client import GeminiClient
 from ..tools.tool_system import ToolSystem
 
@@ -20,8 +22,13 @@ class GeminiREPL:
     """Main REPL class implementing the event loop."""
 
     def __init__(self):
-        self.logger = Logger()
-        self.context = ContextManager()
+        # Initialize path manager first
+        self.paths = PathManager()
+        
+        # Initialize other components with paths
+        self.logger = Logger(log_file=str(self.paths.get_log_file()))
+        self.context = ContextManager(context_file=str(self.paths.context_file))
+        self.jsonl_logger = JSONLLogger(self.paths.get_jsonl_file())
         self.client = GeminiClient()
         self.tools = ToolSystem(self)
         self.running = True
@@ -29,7 +36,16 @@ class GeminiREPL:
 
         # Initialize readline for better input handling
         readline.parse_and_bind("tab: complete")
+        readline.parse_and_bind("set editing-mode emacs")  # Ensure arrow keys work
+        readline.set_history_length(1000)
         self._load_history()
+        
+        # Log startup with project info
+        self.logger.info("REPL started", {
+            "timestamp": datetime.now().isoformat(),
+            "project": self.paths.project_name,
+            "project_dir": str(self.paths.project_dir)
+        })
 
     def _init_commands(self) -> Dict[str, callable]:
         """Initialize slash commands."""
@@ -45,20 +61,24 @@ class GeminiREPL:
             "/tools": self.cmd_tools,
             "/workspace": self.cmd_workspace,
             "/debug": self.cmd_debug,
+            "/project": self.cmd_project,
         }
 
     def _load_history(self):
-        """Load command history."""
-        history_file = Path.home() / ".gemini_repl_history"
+        """Load command history from project-specific file."""
         try:
-            readline.read_history_file(history_file)
+            readline.read_history_file(str(self.paths.history_file))
+            self.logger.debug("Loaded history", {"file": str(self.paths.history_file)})
         except FileNotFoundError:
-            pass
+            self.logger.debug("No history file found", {"file": str(self.paths.history_file)})
 
     def _save_history(self):
-        """Save command history."""
-        history_file = Path.home() / ".gemini_repl_history"
-        readline.write_history_file(history_file)
+        """Save command history to project-specific file."""
+        try:
+            readline.write_history_file(str(self.paths.history_file))
+            self.logger.debug("Saved history", {"file": str(self.paths.history_file)})
+        except Exception as e:
+            self.logger.error("Failed to save history", {"error": str(e)})
 
     def _display_banner(self):
         """Display the REPL banner."""
@@ -87,6 +107,7 @@ class GeminiREPL:
 
                 # Log input
                 self.logger.debug("User input", {"input": user_input})
+                self.jsonl_logger.log_user_input(user_input)
 
                 # Handle slash commands
                 if user_input.startswith("/"):
@@ -120,9 +141,11 @@ class GeminiREPL:
 
         if cmd in self.commands:
             self.commands[cmd](args)
+            self.jsonl_logger.log_command(cmd, args)
         else:
             print(f"Unknown command: {cmd}")
             print("Type /help for available commands")
+            self.jsonl_logger.log_command(cmd, args, "unknown_command")
 
     def _handle_api_request(self, user_input: str):
         """Handle API request with context and tools."""
@@ -130,23 +153,24 @@ class GeminiREPL:
             # Add to context
             self.context.add_message("user", user_input)
 
-            # Get response with tools
+            # Get response (tools disabled for now until SDK support is complete)
             response = self.client.send_message(
-                self.context.get_messages(), tools=self.tools.get_tool_definitions()
+                self.context.get_messages()
             )
 
-            # Handle tool calls if present
-            if hasattr(response, "candidates") and response.candidates:
-                candidate = response.candidates[0]
-                if hasattr(candidate.content, "parts"):
-                    for part in candidate.content.parts:
-                        if hasattr(part, "function_call"):
-                            # Execute tool
-                            tool_response = self.tools.execute_tool(
-                                part.function_call.name, part.function_call.args
-                            )
-                            # Add tool response to context
-                            self.context.add_tool_response(part.function_call.name, tool_response)
+            # Handle tool calls if present (disabled for now)
+            # TODO: Re-enable when tool support is properly implemented
+            # if hasattr(response, "candidates") and response.candidates:
+            #     candidate = response.candidates[0]
+            #     if hasattr(candidate.content, "parts"):
+            #         for part in candidate.content.parts:
+            #             if hasattr(part, "function_call") and part.function_call:
+            #                 # Execute tool
+            #                 tool_response = self.tools.execute_tool(
+            #                     part.function_call.name, part.function_call.args
+            #                 )
+            #                 # Add tool response to context
+            #                 self.context.add_tool_response(part.function_call.name, tool_response)
 
             # Extract text response
             response_text = self._extract_response_text(response)
@@ -156,9 +180,14 @@ class GeminiREPL:
 
             # Display response with metadata
             self._display_response(response_text, response)
+            
+            # Log response to JSONL
+            metadata = self._extract_metadata(response)
+            self.jsonl_logger.log_assistant_response(response_text, metadata)
 
         except Exception as e:
             self.logger.error("API request failed", {"error": str(e)})
+            self.jsonl_logger.log_error(str(e), {"input": user_input})
             print(f"Error: {e}")
 
     def _extract_response_text(self, response) -> str:
@@ -222,6 +251,7 @@ Available Commands:
   /tools        - List available tools
   /workspace    - Show workspace contents
   /debug        - Toggle debug mode
+  /project      - Show project information
 
 Tool Functions:
   The AI can read, write, and modify files in the workspace directory.
@@ -303,6 +333,19 @@ Tool Functions:
         new_level = "DEBUG" if current != 10 else "INFO"  # 10 is DEBUG level
         self.logger.set_level(new_level)
         print(f"Debug mode: {'ON' if new_level == 'DEBUG' else 'OFF'}")
+    
+    def cmd_project(self, args: str):
+        """Show project information."""
+        info = self.paths.info()
+        print("\n=== Project Information ===")
+        print(f"Project Name: {info['project_name']}")
+        print(f"Project Dir:  {info['project_dir']}")
+        print(f"History File: {info['history_file']}")
+        print(f"Context File: {info['context_file']}")
+        print(f"Logs Dir:     {info['logs_dir']}")
+        print(f"Working Dir:  {info['cwd']}")
+        print(f"\nShared context across sessions: YES")
+        print(f"Session cache for Gemini API: ENABLED")
 
 
 # REPL Event Loop:1 ends here

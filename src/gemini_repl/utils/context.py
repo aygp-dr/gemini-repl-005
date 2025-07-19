@@ -15,8 +15,8 @@ import tiktoken
 class ContextManager:
     """Manage conversation context and history."""
 
-    def __init__(self):
-        self.context_file = os.getenv("CONTEXT_FILE", "conversation.json")
+    def __init__(self, context_file=None):
+        self.context_file = context_file or os.getenv("CONTEXT_FILE", "conversation.json")
         self.max_tokens = int(os.getenv("MAX_CONTEXT_TOKENS", "100000"))
         self.messages: List[Dict[str, Any]] = []
         self.session_start = datetime.now()

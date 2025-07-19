@@ -16,9 +16,9 @@ from typing import Dict, Any, Optional
 class Logger:
     """Custom logger with JSON formatting and multiple outputs."""
 
-    def __init__(self):
+    def __init__(self, log_file=None):
         self.log_level = os.getenv("LOG_LEVEL", "INFO")
-        self.log_file = os.getenv("LOG_FILE", "logs/gemini.log")
+        self.log_file = log_file or os.getenv("LOG_FILE", "logs/gemini.log")
         self.log_format = os.getenv("LOG_FORMAT", "json")
 
         # Ensure log directory exists
@@ -43,9 +43,9 @@ class Logger:
         console_handler.setFormatter(self._get_formatter())
         self.logger.addHandler(console_handler)
 
-        # FIFO support (optional)
+        # FIFO support (optional - disabled for now)
         self.fifo_path = "/tmp/gemini-repl.fifo"
-        self._setup_fifo()
+        # self._setup_fifo()  # Disabled to prevent hanging
 
     def _get_formatter(self):
         """Get appropriate formatter based on format setting."""
@@ -111,8 +111,8 @@ class Logger:
         else:
             log_method(f"{message} - {json.dumps(data) if data else ''}")
 
-        # Log to FIFO
-        self._log_to_fifo(record)
+        # Log to FIFO (disabled for now)
+        # self._log_to_fifo(record)
 
 
 class JsonFormatter(logging.Formatter):
