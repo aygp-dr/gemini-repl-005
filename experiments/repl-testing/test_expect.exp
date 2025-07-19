@@ -1,0 +1,137 @@
+#!/usr/bin/env expect
+# Expect script to test REPL interaction through TTY
+
+set timeout 10
+set log_file "expect_test.log"
+
+# Set up environment
+set env(GEMINI_API_KEY) $env(GEMINI_API_KEY)
+set env(LOG_FILE) $log_file
+set env(LOG_LEVEL) "DEBUG"
+set env(CONTEXT_FILE) "expect_context.json"
+
+# Start the REPL
+spawn uv run python -m gemini_repl
+
+# Wait for banner
+expect {
+    timeout { 
+        puts "FAILED: Timeout waiting for banner"
+        exit 1 
+    }
+    "Gemini REPL" { 
+        puts "✓ Banner displayed" 
+    }
+}
+
+# Wait for prompt
+expect {
+    timeout { 
+        puts "FAILED: Timeout waiting for prompt"
+        exit 1 
+    }
+    "> " { 
+        puts "✓ Prompt appeared" 
+    }
+}
+
+# Send math question
+send "What is 2 + 2?\r"
+
+# Wait for response
+expect {
+    timeout { 
+        puts "FAILED: Timeout waiting for response"
+        exit 1 
+    }
+    -re "4|four" { 
+        puts "✓ Got correct answer" 
+    }
+}
+
+# Wait for next prompt
+expect {
+    timeout { 
+        puts "FAILED: Timeout waiting for second prompt"
+        exit 1 
+    }
+    "> " { 
+        puts "✓ Second prompt appeared" 
+    }
+}
+
+# Test /help command
+send "/help\r"
+
+expect {
+    timeout { 
+        puts "FAILED: Timeout waiting for help"
+        exit 1 
+    }
+    -re "Available Commands:|/help.*Show this help" { 
+        puts "✓ Help command works" 
+    }
+}
+
+# Wait for prompt after help (with longer timeout for help output)
+set timeout 15
+expect "> "
+set timeout 10
+
+# Exit cleanly
+send "/exit\r"
+
+expect {
+    timeout { 
+        puts "FAILED: Timeout waiting for goodbye"
+        exit 1 
+    }
+    "Goodbye" { 
+        puts "✓ Clean exit" 
+    }
+}
+
+# Wait for process to end
+expect eof
+
+# Check if log file was created and has content
+if {[file exists $log_file]} {
+    puts "✓ Log file created"
+    
+    # Read log file
+    set fp [open $log_file r]
+    set log_content [read $fp]
+    close $fp
+    
+    # Check for key log entries
+    if {[string match "*REPL started*" $log_content]} {
+        puts "✓ REPL start logged"
+    } else {
+        puts "✗ REPL start not found in log"
+    }
+    
+    if {[string match "*User input*2 + 2*" $log_content]} {
+        puts "✓ User input logged"
+    } else {
+        puts "✗ User input not found in log"
+    }
+    
+    if {[string match "*REPL stopped*" $log_content]} {
+        puts "✓ REPL stop logged"
+    } else {
+        puts "✗ REPL stop not found in log"
+    }
+    
+    # Clean up
+    file delete $log_file
+} else {
+    puts "✗ Log file not created"
+}
+
+# Clean up context file
+if {[file exists "expect_context.json"]} {
+    file delete "expect_context.json"
+}
+
+puts "\n✅ All expect tests passed!"
+exit 0
