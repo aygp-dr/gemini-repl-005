@@ -1,0 +1,44 @@
+BUILDER SESSION: Devcontainer Implementation
+
+PROMPTS USED:
+1. 'i have another agent working on tool dispatch. could you check this: Check issue #28 - need devcontainer setup for Codespaces...'
+2. '[Request interrupted by user for tool use]use --trailer for co-author attribution'
+
+CONTEXT:
+- User reported issue #28 requesting devcontainer support
+- Another agent was working on tool dispatch (issue #26)
+- User on default Codespaces image (Ubuntu/Azure)
+- Priority: minimal setup with Python 3.11 + uv
+
+IMPLEMENTATION:
+1. Created .devcontainer/devcontainer.json
+   - Base: mcr.microsoft.com/devcontainers/python:3.11-bullseye
+   - Features: common-utils with zsh/oh-my-zsh
+   - Extensions: Python, Pylance, Ruff, TOML
+   - postCreateCommand: Install uv, run make setup, activate venv
+
+2. Created scripts/validate_setup.sh
+   - Comprehensive validation script
+   - Checks: Python 3.11+, uv, git, make, dependencies
+   - Provides clear fix instructions
+   - Exit code indicates success/failure
+
+3. Created .devcontainer/README.md
+   - Setup instructions for Codespaces and VS Code
+   - Troubleshooting steps
+   - Force-added despite .gitignore (intentional docs)
+
+TESTING CONSIDERATIONS:
+- Script made executable (chmod +x)
+- PATH updated to include cargo/bin for uv
+- Auto-activation added to both .bashrc and .zshrc
+- Validation script can be run post-setup
+
+REHYDRATION NOTES:
+- .devcontainer/ directory is self-contained
+- No changes to core application code
+- Works with existing Makefile targets
+- Compatible with both Codespaces and local VS Code
+
+TIME: ~20 minutes
+ISSUE: Closes #28
