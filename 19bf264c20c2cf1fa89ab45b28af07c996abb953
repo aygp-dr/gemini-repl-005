@@ -1,0 +1,58 @@
+BUILDER SESSION: Dashboard Implementation
+
+PROMPTS USED:
+1. 'can you add a quick gmake dashboard for loading up a shell, a builder, and observer, and another builder'
+2. '[Request interrupted by user for tool use]could you tmux gmake dashboard so we don't block'
+3. 'git push and then git note the prompts used / testing / considerations for rehydrating teh build of the repo'
+
+CONTEXT:
+- User wanted tmux dashboard for development workflow
+- Need for multiple panes: shell, 2x builders, observer
+- Issue #12 mentioned meta dashboard functionality
+- Requirement: non-blocking execution
+
+IMPLEMENTATION:
+1. Makefile targets added:
+   - dashboard: Launch 4-pane tmux session
+   - dashboard-attach: Attach to existing session
+   - dashboard-kill: Terminate session
+   - dashboard-status: Show session info
+
+2. scripts/dashboard.sh:
+   - 4-pane layout (2x2 grid)
+   - Top: Shell  < /dev/null |  Builder 1
+   - Bottom: Observer | Builder 2
+   - Detached mode by default (non-blocking)
+   - Mouse support enabled
+   - Custom blue theme
+   - Git branch in status bar
+   - Auto venv activation hints
+
+3. scripts/dashboard-simple.sh:
+   - Fallback for non-tmux environments
+   - Instructions for manual setup
+   - Auto-detection of terminal emulators
+   - Attempts to open tabs/windows
+
+TESTING APPROACH:
+- Checked existing tmux sessions before creation
+- Tested detached mode to avoid blocking
+- Verified pane layout and sizing
+- Ensured scripts are executable
+
+REHYDRATION CONSIDERATIONS:
+- Scripts are self-contained in scripts/
+- No dependencies beyond tmux
+- Works with existing project structure
+- Integrates with make workflow
+- Session name: 'gemini-repl' (hardcoded)
+
+DESIGN DECISIONS:
+- Detached by default (user feedback)
+- 4 panes for different workflows
+- Clear pane labeling
+- Fallback for accessibility
+- No modification to core code
+
+TIME: ~25 minutes
+RELATED: Issue #12 (meta dashboard)
