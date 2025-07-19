@@ -2,6 +2,12 @@
 #+AUTHOR: Gemini REPL Project
 #+DATE: 2025-01-17
 
+[[https://img.shields.io/badge/version-0.1.0-blue.svg]]
+[[https://img.shields.io/badge/status-draft-orange.svg]]
+[[https://img.shields.io/badge/stability-experimental-red.svg]]
+[[https://img.shields.io/badge/purpose-educational-green.svg]]
+[[https://img.shields.io/badge/production-not%20ready-critical.svg]]
+
 * Overview
 
 A self-hosting Python REPL with Gemini AI integration, featuring conversation context, tool use, and logging.

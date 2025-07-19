@@ -109,11 +109,13 @@ class GeminiREPL:
 
     def _display_banner(self):
         """Display the REPL banner."""
-        banner = """
+        from gemini_repl import __version__
+        banner = f"""
 ╔══════════════════════════════════════╗
-║        🌟 Gemini REPL v1.0 🌟        ║
+║      🌟 Gemini REPL v{__version__} 🌟      ║
 ║  Python-powered AI conversations     ║
 ║  Type /help for available commands   ║
+║  Status: Experimental/Educational    ║
 ╚══════════════════════════════════════╝
 """
         print(banner)

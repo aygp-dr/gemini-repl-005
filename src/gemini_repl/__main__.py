@@ -7,6 +7,7 @@
 
 import sys
 import argparse
+from gemini_repl import __version__
 from gemini_repl.core.repl import GeminiREPL
 from gemini_repl.utils.session import (
     add_session_args,
@@ -19,6 +20,7 @@ from gemini_repl.utils.paths import PathManager
 
 def main():
     parser = argparse.ArgumentParser(description="Gemini REPL - AI-powered conversation interface")
+    parser.add_argument('--version', action='version', version=f'Gemini REPL {__version__}')
     add_session_args(parser)
     args = parser.parse_args()
 
