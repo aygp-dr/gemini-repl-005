@@ -112,7 +112,7 @@ class GeminiREPL:
         from gemini_repl import __version__
         banner = f"""
 ╔══════════════════════════════════════╗
-║      🌟 Gemini REPL v{__version__} 🌟      ║
+║      🌟 Gemini REPL v{__version__} 🌟        ║
 ║  Python-powered AI conversations     ║
 ║  Type /help for available commands   ║
 ╚══════════════════════════════════════╝
