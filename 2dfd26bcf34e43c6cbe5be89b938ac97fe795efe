@@ -1,0 +1,58 @@
+# Version 0.1.0 Release
+
+## User Prompt
+"I think we want to call this a 0.1.0 version (not production ready) and reference that consistently but be able to note what milestones exist to get it to 0.2.0 (self hosting with tool use)"
+
+## Implementation
+
+### Version Consistency
+- Updated pyproject.toml: version = "0.1.0"
+- Created src/gemini_repl/__init__.py with __version__ = "0.1.0"
+- Updated REPL banner to display v0.1.0
+- Added --version flag to CLI
+- Created VERSION file
+- Added version badges to README.org
+
+### Documentation
+- Created CHANGELOG.md with roadmap to 0.2.0
+- Created RELEASE_NOTES.md for v0.1.0
+- Added status badges showing experimental/educational nature
+
+### Version Display
+All components now consistently show v0.1.0:
+- `python -m gemini_repl --version` → "Gemini REPL 0.1.0"
+- REPL banner shows "Gemini REPL v0.1.0" with experimental status
+- pyproject.toml has version = "0.1.0"
+
+## Milestones to 0.2.0
+
+### Core Requirements for Self-Hosting
+1. **Tool Dispatch Reliability** (#26)
+   - Fix inconsistent tool triggering
+   - Improve tool descriptions
+   - Add integration tests
+
+2. **Self-Hosting Capabilities**
+   - Safe source modification
+   - Backup/rollback mechanisms
+   - Hot reload support
+   - Version control integration
+
+3. **Enhanced Tool System**
+   - Tool caching and composition
+   - Better error handling
+   - Usage examples in prompts
+
+4. **Production Readiness**
+   - >80% test coverage
+   - Performance benchmarks
+   - Memory leak fixes
+   - Proper async implementation
+
+5. **Developer Experience**
+   - Better error messages
+   - Tool development guide
+   - Self-hosting tutorial
+
+## Status
+This is an experimental release for educational purposes. The project is not ready for production use but provides a foundation for learning about AI integration and tool-based systems.
