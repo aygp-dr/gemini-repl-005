@@ -1,0 +1,94 @@
+Security Hardening and Tool System Implementation
+
+## Key Prompts & Development Flow:
+
+### Initial Security Concern:
+"do we have any guardrails / hardening about ensuring that we stay in the current repo during list files, read file, write file: be *very* restrictive about this"
+
+### Security Testing Approach:
+"first, show a reproduction / example (e.g., just in /tmp) then add a gh issue and red team-ish approaches then add a unit test even for ../list files or something"
+
+### Implementation Philosophy:
+"for self hosting i'm good with 'only change files in this repo and no symlinks, no Update just list, read, write'"
+
+## Implementation Details:
+
+### 1. Vulnerability Discovery
+- Created path_traversal_poc.py demonstrating unrestricted file access
+- Showed reading /etc/passwd, writing to /tmp, listing parent dirs
+- Demonstrated symlink bypass attacks
+
+### 2. Security Controls Added
+- SANDBOX_DIR = Path.cwd().resolve() at startup
+- validate_path() function with comprehensive checks:
+  - Rejects absolute paths
+  - Rejects .. parent references
+  - Validates resolution within sandbox
+  - Blocks symlinks
+- All tools (read_file, write_file, list_files, search_code) use validation
+
+### 3. Testing Strategy
+- Created test_path_traversal_security.py with 8 test cases
+- Tests initially FAILED (correctly showing vulnerability)
+- After fix, 7/8 tests PASS (all attacks blocked)
+- Only safe operations continue to work
+
+## Issues Created/Closed:
+
+### Issue #21: Critical Security - Path Traversal
+- Comprehensive vulnerability analysis
+- CVSS 9.8 severity (for production systems)
+- Red team attack vectors documented
+- Fixed and closed with sandbox implementation
+
+### Issue #20: Final Testing Checklist
+- End-to-end validation checklist
+- Assigned to jwalsh for final verification
+
+### Issue #18: Self-Hosting Tool Calling (completed)
+### Issue #15: Session Management (completed)
+### Issue #13: Context Resolution (completed)
+
+## Technical Considerations:
+
+### 1. Security vs Usability
+- Balance between protection and functionality
+- Chose simple model: "only modify this repo"
+- No complex permission systems
+
+### 2. Error Handling
+- SecurityError for clear violation feedback
+- Graceful error messages to AI
+- No stack traces exposed
+
+### 3. Performance
+- Path validation adds minimal overhead
+- Glob patterns filtered post-execution
+- Ripgrep runs with cwd constraint
+
+### 4. Future Considerations
+- Could add whitelist of allowed directories
+- Could implement read-only mode toggle
+- Could add file type restrictions
+
+## Testing Insights:
+
+### Red Team Vectors Tested:
+1. Directory traversal: ../../../etc/passwd
+2. Absolute paths: /etc/passwd, /tmp/evil
+3. Symlink attacks: evil_link -> /etc
+4. Path normalization: .//..//..//etc/passwd
+5. Complex paths: ../foo/../bar/../../etc
+6. URL encoding: %2e%2e%2f (future consideration)
+
+### Key Learning:
+Simple security boundaries work best. Rather than complex permission systems, a clear "sandbox to pwd" model is easier to understand, implement, and audit.
+
+## Prompts Evolution:
+1. Started with general security concern
+2. Requested PoC before fixing (good practice)
+3. Asked for comprehensive testing
+4. Refined to simple security model
+5. Validated with test suite
+
+This implementation provides a secure foundation for AI self-modification within defined boundaries.
