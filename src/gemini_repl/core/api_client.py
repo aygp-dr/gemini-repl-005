@@ -7,6 +7,7 @@
 import os
 from typing import List, Dict, Any, Optional
 from google import genai
+from google.genai import types
 
 
 class GeminiClient:
@@ -21,31 +22,45 @@ class GeminiClient:
         self.model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
 
     def send_message(
-        self, messages: List[Dict[str, str]], tools: Optional[List[Any]] = None
+        self, messages: List[Dict[str, str]], tools: Optional[List[Dict[str, Any]]] = None
     ) -> Any:
-        """Send message to Gemini API with optional tools."""
-        # For now, we'll use a simple approach without conversation history
-        # TODO: Research proper conversation handling in new SDK
+        """Send message to Gemini API with full conversation history and optional tools."""
+        if not messages:
+            raise ValueError("No messages provided")
 
-        # Get the last user message
-        last_user_message = None
-        for msg in reversed(messages):
-            if msg["role"] == "user":
-                last_user_message = msg["content"]
-                break
+        # Convert messages to Gemini format
+        contents = self._convert_messages_to_contents(messages)
 
-        if not last_user_message:
-            raise ValueError("No user message found")
+        # Configure tools if provided
+        config = None
+        if tools:
+            tool_declarations = types.Tool(function_declarations=tools)
+            config = types.GenerateContentConfig(tools=[tool_declarations])
 
-        # Send request (ignoring tools for now)
         try:
             response = self.client.models.generate_content(
-                model=self.model_name, contents=last_user_message
+                model=self.model_name,
+                contents=contents,
+                config=config
             )
             return response
 
         except Exception as e:
             raise Exception(f"API request failed: {e}")
+
+    def _convert_messages_to_contents(self, messages: List[Dict[str, str]]) -> List[types.Content]:
+        """Convert message history to Gemini Content format."""
+        contents = []
+        
+        for msg in messages:
+            role = "user" if msg["role"] == "user" else "model"
+            content = types.Content(
+                role=role,
+                parts=[types.Part(text=msg["content"])]
+            )
+            contents.append(content)
+        
+        return contents
 
     def _convert_messages(self, messages: List[Dict[str, str]]) -> List[str]:
         """Convert internal message format to Gemini format."""
