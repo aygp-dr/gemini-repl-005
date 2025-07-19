@@ -9,6 +9,7 @@ import sys
 import argparse
 from gemini_repl import __version__
 from gemini_repl.core.repl import GeminiREPL
+from gemini_repl.core.repl_structured import StructuredGeminiREPL
 from gemini_repl.utils.session import (
     add_session_args,
     SessionManager,
@@ -63,7 +64,12 @@ def main():
             sys.exit(1)
 
     # Create REPL with optional session
-    repl = GeminiREPL(session_id=session_id, resume_session=resume_session)
+    # Use structured REPL if available (fallback handled internally)
+    try:
+        repl = StructuredGeminiREPL(session_id=session_id, resume_session=resume_session)
+    except Exception as e:
+        print(f"Warning: Falling back to standard REPL: {e}")
+        repl = GeminiREPL(session_id=session_id, resume_session=resume_session)
     try:
         repl.run()
     except KeyboardInterrupt:
