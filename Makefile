@@ -1,6 +1,6 @@
 # Makefile for Gemini REPL - Simplified with script delegation
 
-.PHONY: help setup lint test build run clean tangle detangle all repl gemini-repl test-expect
+.PHONY: help setup lint test build run clean tangle detangle all repl gemini-repl test-expect monitor dev-repl
 
 # Default target
 all: setup lint test
@@ -13,6 +13,8 @@ help:
 	@echo "  make build    - Build distribution packages"
 	@echo "  make run      - Run the REPL"
 	@echo "  make repl     - Run the REPL (alias for 'uv run python -m gemini_repl')"
+	@echo "  make monitor  - Show commands for monitoring REPL logs"
+	@echo "  make dev-repl - Run REPL in development mode (logs to logs/)"
 	@echo "  make clean    - Clean generated files"
 	@echo ""
 	@echo "Org-mode Commands:"
@@ -95,6 +97,17 @@ test-expect:
 				timeout 30 ./$$test || echo "FAILED: $$test"; \
 			fi \
 		done
+
+# Monitor REPL logs via tail
+monitor:
+	@echo "Monitoring REPL logs..."
+	@echo "Use: tail -f ~/.gemini/gemini-repl.log"
+	@echo "Or for development: tail -f logs/gemini.log"
+
+# Development mode (logs to logs/ instead of ~/.gemini)
+dev-repl:
+	@echo "Running REPL in development mode..."
+	@GEMINI_DEV_MODE=true uv run python -m gemini_repl
 
 # Install pre-commit hooks
 hooks: .venv/bin/activate

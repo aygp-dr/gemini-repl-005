@@ -39,7 +39,12 @@ class GeminiREPL:
                 print(f"Session {resume_session} not found, starting new session")
 
         # Initialize other components with paths
-        self.logger = Logger(log_file=str(self.paths.get_log_file()))
+        # Use development logs/ for testing, ~/.gemini for production
+        dev_mode = os.getenv("GEMINI_DEV_MODE", "false").lower() == "true"
+        if dev_mode:
+            self.logger = Logger(log_file=str(self.paths.get_log_file()), use_home_dir=False)
+        else:
+            self.logger = Logger()  # Uses ~/.gemini by default
         self.context = ContextManager(context_file=str(self.paths.context_file))
         self.jsonl_logger = JSONLLogger(self.paths.get_jsonl_file(), self.session_manager)
         self.client = GeminiClient()
@@ -145,6 +150,7 @@ class GeminiREPL:
 
         self._save_history()
         self.logger.info("REPL stopped")
+        self.logger.shutdown()
 
     def _get_prompt(self) -> str:
         """Generate the prompt string."""

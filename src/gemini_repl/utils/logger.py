@@ -16,9 +16,19 @@ from typing import Dict, Any, Optional
 class Logger:
     """Custom logger with JSON formatting and multiple outputs."""
 
-    def __init__(self, log_file=None):
+    def __init__(self, log_file=None, use_home_dir=True):
         self.log_level = os.getenv("LOG_LEVEL", "INFO")
-        self.log_file = log_file or os.getenv("LOG_FILE", "logs/gemini.log")
+
+        # Default to ~/.gemini for persistence, logs/ for development
+        if log_file:
+            self.log_file = log_file
+        elif use_home_dir:
+            home_gemini = Path.home() / ".gemini"
+            home_gemini.mkdir(exist_ok=True)
+            self.log_file = str(home_gemini / "gemini-repl.log")
+        else:
+            self.log_file = "logs/gemini.log"
+
         self.log_format = os.getenv("LOG_FORMAT", "json")
 
         # Ensure log directory exists
@@ -43,35 +53,12 @@ class Logger:
         console_handler.setFormatter(self._get_formatter())
         self.logger.addHandler(console_handler)
 
-        # FIFO support (optional - disabled for now)
-        self.fifo_path = "/tmp/gemini-repl.fifo"
-        # self._setup_fifo()  # Disabled to prevent hanging
-
     def _get_formatter(self):
         """Get appropriate formatter based on format setting."""
         if self.log_format == "json":
             return JsonFormatter()
         else:
             return logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-
-    def _setup_fifo(self):
-        """Setup FIFO for real-time log monitoring."""
-        try:
-            if os.path.exists(self.fifo_path):
-                os.unlink(self.fifo_path)
-            os.mkfifo(self.fifo_path)
-        except (OSError, IOError):
-            # FIFO is optional, ignore errors
-            pass
-
-    def _log_to_fifo(self, record: Dict[str, Any]):
-        """Write log record to FIFO if available."""
-        try:
-            if os.path.exists(self.fifo_path):
-                with open(self.fifo_path, "w") as f:
-                    f.write(json.dumps(record) + "\n")
-        except (OSError, IOError, BrokenPipeError):
-            pass
 
     def set_level(self, level: str):
         """Change log level at runtime."""
@@ -111,8 +98,12 @@ class Logger:
         else:
             log_method(f"{message} - {json.dumps(data) if data else ''}")
 
-        # Log to FIFO (disabled for now)
-        # self._log_to_fifo(record)
+    def shutdown(self):
+        """Shutdown logger and cleanup resources."""
+        # Close handlers properly
+        for handler in self.logger.handlers:
+            handler.close()
+        self.logger.handlers.clear()
 
 
 class JsonFormatter(logging.Formatter):
