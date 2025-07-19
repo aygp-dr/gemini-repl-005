@@ -1,0 +1,26 @@
+FIFO Rollback and Logging Improvements
+
+## Key Implementation:
+- Rolled back complex FIFO real-time logging in favor of simple file-based approach
+- Added ~/.gemini/ default logging for persistence, logs/ for development mode
+- Implemented GEMINI_DEV_MODE environment variable for dev logging control
+- Updated Makefile with dev-repl target and monitoring guidance
+
+## Architecture Decision:
+FIFO experiment revealed that file-based logging is more reliable and maintainable.
+Thread-based FIFO with non-blocking writes was complex and unreliable in production.
+Simple tail -f provides adequate real-time monitoring when needed.
+
+## Testing Status:
+- Logger constructor changes broke test assumptions
+- Context persistence issues from previous sessions
+- MyPy errors in tool system need attention
+- Expect tests failing on log validation
+
+## Future Work:
+- Fix logger test compatibility with new constructor
+- Clean up context state between test runs
+- Consider session isolation for tests
+- Address tool system type annotations
+
+This mirrors Claude Code's approach of simple, reliable logging over complex real-time systems.
