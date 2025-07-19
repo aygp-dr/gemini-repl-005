@@ -65,6 +65,19 @@ class JSONLLogger:
             interaction = {"type": "error", "error": error, "context": context or {}}
             self.log_interaction(interaction)
 
+    def log_tool_use(self, tool_name: str, args: Dict[str, Any], result: Any):
+        """Log tool usage."""
+        interaction = {
+            "type": "tool_use",
+            "tool": tool_name,
+            "args": args,
+            "result": str(result)[:200] + "..." if len(str(result)) > 200 else str(result),
+            "timestamp": datetime.now().isoformat(),
+        }
+        if self.session_manager:
+            interaction["session_id"] = self.session_manager.session_id
+        self.log_interaction(interaction)
+
     def read_interactions(self, last_n: Optional[int] = None):
         """Read interactions from JSONL file."""
         if not self.jsonl_path.exists():

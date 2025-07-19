@@ -1,6 +1,6 @@
 # Makefile for Gemini REPL - Simplified with script delegation
 
-.PHONY: help setup lint test build run clean tangle detangle all repl gemini-repl test-expect monitor dev-repl
+.PHONY: help setup lint test build run clean tangle detangle all repl gemini-repl test-expect monitor dev-repl dashboard dashboard-attach dashboard-kill dashboard-status
 
 # Default target
 all: setup lint test
@@ -16,6 +16,12 @@ help:
 	@echo "  make monitor  - Show commands for monitoring REPL logs"
 	@echo "  make dev-repl - Run REPL in development mode (logs to logs/)"
 	@echo "  make clean    - Clean generated files"
+	@echo ""
+	@echo "Dashboard Commands:"
+	@echo "  make dashboard        - Launch tmux dashboard (4 panes)"
+	@echo "  make dashboard-attach - Attach to existing dashboard"
+	@echo "  make dashboard-kill   - Kill dashboard session"
+	@echo "  make dashboard-status - Show dashboard status"
 	@echo ""
 	@echo "Org-mode Commands:"
 	@echo "  make tangle   - Extract code from PYTHON-GEMINI-REPL.org"
@@ -125,3 +131,33 @@ README.md: README.org
 		--eval "(org-md-export-to-markdown)" \
 		--eval "(kill-emacs)"
 	@echo "✓ $@ generated"
+
+# Launch tmux dashboard with multiple panes
+dashboard:
+	@if command -v tmux &> /dev/null && ! tmux has-session -t gemini-repl 2>/dev/null; then \
+		./scripts/dashboard.sh; \
+	elif tmux has-session -t gemini-repl 2>/dev/null; then \
+		echo "Dashboard already running. Attaching..."; \
+		tmux attach -t gemini-repl; \
+	else \
+		./scripts/dashboard.sh; \
+	fi
+
+# Attach to existing dashboard
+dashboard-attach:
+	@tmux attach -t gemini-repl || echo "No dashboard session found. Run 'make dashboard' first."
+
+# Kill dashboard session
+dashboard-kill:
+	@tmux kill-session -t gemini-repl 2>/dev/null || echo "No dashboard session to kill."
+	@echo "Dashboard session terminated."
+
+# Show dashboard status
+dashboard-status:
+	@if tmux has-session -t gemini-repl 2>/dev/null; then \
+		echo "Dashboard session is running."; \
+		echo ""; \
+		tmux list-panes -t gemini-repl -F "Pane #P: #{pane_title} (#{pane_width}x#{pane_height})"; \
+	else \
+		echo "No dashboard session found."; \
+	fi
