@@ -10,6 +10,8 @@ from typing import List, Dict, Any, Optional
 from google import genai
 from google.genai import types
 
+from ..utils.rate_limiter import GlobalRateLimiter
+
 
 class GeminiClient:
     """Client for interacting with Gemini API."""
@@ -23,6 +25,9 @@ class GeminiClient:
         # Use model with best rate limits for free tier (30 RPM)
         # See docs/RATE_LIMITS.md for details
         self.model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-lite")
+        
+        # Initialize rate limiter
+        self.rate_limiter = GlobalRateLimiter.get_limiter(self.model_name)
 
     def send_message(
         self, messages: List[Dict[str, str]], tools: Optional[List[Dict[str, Any]]] = None
@@ -40,12 +45,18 @@ class GeminiClient:
             tool_declarations = types.Tool(function_declarations=tools)
             config = types.GenerateContentConfig(tools=[tool_declarations])
 
+        # Check rate limit before making request
+        self.rate_limiter.wait_with_display()
+        
         # Retry logic for rate limits
         max_retries = 3
         retry_delay = 10  # seconds
         
         for attempt in range(max_retries):
             try:
+                # Record the request
+                self.rate_limiter.record_request()
+                
                 response = self.client.models.generate_content(
                     model=self.model_name,
                     contents=contents,
@@ -57,7 +68,8 @@ class GeminiClient:
                 error_str = str(e)
                 if "429" in error_str and "RESOURCE_EXHAUSTED" in error_str:
                     if attempt < max_retries - 1:
-                        print(f"⏳ Rate limit hit, waiting {retry_delay}s... (attempt {attempt + 1}/{max_retries})")
+                        print("⚠️  Rate limit hit despite protection!")
+                        print(f"⏳ Waiting {retry_delay}s... (attempt {attempt + 1}/{max_retries})")
                         time.sleep(retry_delay)
                         retry_delay *= 1.5  # Exponential backoff
                         continue

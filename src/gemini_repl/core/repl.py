@@ -244,14 +244,8 @@ class GeminiREPL:
                         "result_length": len(result)
                     })
                     
-                    # Create function response and get follow-up from AI
-                    from google.genai import types
-                    function_response = types.Part.from_function_response(
-                        name=function_call.name,
-                        response={"result": result}
-                    )
-                    
-                    # Send back to AI for interpretation
+                    # Tool response is handled by API client
+                    # The result will be sent back to AI for interpretation
                     follow_up = self.client.send_message([
                         {"role": "user", "content": user_input},
                         {"role": "assistant", "content": "I'll use tools to help with that."},
