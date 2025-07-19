@@ -53,9 +53,8 @@ class TestPathTraversalSecurity(unittest.TestCase):
         for attack in attacks:
             with self.subTest(attack=attack):
                 result = read_file(attack)
-                # CURRENTLY FAILS - reads the file!
-                # After fix: should contain "Error" or raise exception
-                self.assertIn("Error", result, f"Path traversal not blocked: {attack}")
+                # Should now return security error
+                self.assertIn("error", result.lower(), f"Path traversal not blocked: {attack}")
     
     def test_read_file_absolute_paths(self):
         """Test that absolute paths are blocked."""
@@ -69,7 +68,7 @@ class TestPathTraversalSecurity(unittest.TestCase):
             with self.subTest(attack=attack):
                 result = read_file(attack)
                 # CURRENTLY FAILS - reads the file!
-                self.assertIn("Error", result, f"Absolute path not blocked: {attack}")
+                self.assertIn("error", result.lower(), f"Absolute path not blocked: {attack}")
     
     def test_write_file_parent_directory_traversal(self):
         """Test that write operations can't escape sandbox."""
@@ -83,7 +82,7 @@ class TestPathTraversalSecurity(unittest.TestCase):
             with self.subTest(path=path):
                 result = write_file(path, content)
                 # CURRENTLY FAILS - writes the file!
-                self.assertIn("Error", result, f"Write traversal not blocked: {path}")
+                self.assertIn("error", result.lower(), f"Write traversal not blocked: {path}")
                 
                 # Verify file wasn't created outside sandbox
                 abs_path = os.path.abspath(path)
@@ -103,7 +102,7 @@ class TestPathTraversalSecurity(unittest.TestCase):
             with self.subTest(path=path):
                 result = write_file(path, content)
                 # CURRENTLY FAILS - writes the file!
-                self.assertIn("Error", result, f"Absolute write not blocked: {path}")
+                self.assertIn("error", result.lower(), f"Absolute write not blocked: {path}")
     
     def test_list_files_parent_directory(self):
         """Test that list operations can't escape sandbox."""
@@ -120,7 +119,7 @@ class TestPathTraversalSecurity(unittest.TestCase):
                 result = list_files(pattern)
                 # CURRENTLY FAILS - lists parent directories!
                 self.assertTrue(
-                    "No files found" in result or "Error" in result,
+                    "No files found" in result or "error" in result.lower(),
                     f"List traversal not blocked: {pattern}"
                 )
     
@@ -133,7 +132,7 @@ class TestPathTraversalSecurity(unittest.TestCase):
             # Test read via symlink
             result = read_file("evil_link/passwd")
             # CURRENTLY FAILS - follows symlink!
-            self.assertIn("Error", result, "Symlink traversal not blocked")
+            self.assertIn("error", result.lower(), "Symlink traversal not blocked")
             
             # Test list via symlink
             result = list_files("evil_link/*")
@@ -156,7 +155,7 @@ class TestPathTraversalSecurity(unittest.TestCase):
             with self.subTest(attack=attack):
                 result = read_file(attack)
                 # CURRENTLY FAILS - normalizes and reads!
-                self.assertIn("Error", result, f"Path normalization bypass: {attack}")
+                self.assertIn("error", result.lower(), f"Path normalization bypass: {attack}")
     
     def test_safe_operations_still_work(self):
         """Test that legitimate operations still work."""
