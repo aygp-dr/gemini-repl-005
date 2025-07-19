@@ -17,6 +17,7 @@ from ..utils.jsonl_logger import JSONLLogger
 from ..utils.session import SessionManager
 from .api_client import GeminiClient
 from ..tools.tool_system import ToolSystem
+from ..tools.codebase_tools import CODEBASE_TOOL_DECLARATIONS, execute_tool
 
 
 class GeminiREPL:
@@ -51,6 +52,9 @@ class GeminiREPL:
         self.tools = ToolSystem(self)
         self.running = True
         self.commands = self._init_commands()
+        
+        # Tool calling enabled by default
+        self.tools_enabled = os.getenv("GEMINI_TOOLS_ENABLED", "true").lower() == "true"
 
         # Initialize readline for better input handling
         readline.parse_and_bind("tab: complete")
@@ -84,6 +88,7 @@ class GeminiREPL:
             "/debug": self.cmd_debug,
             "/project": self.cmd_project,
             "/sessions": self.cmd_sessions,
+            "/toggle-tools": self.cmd_toggle_tools,
         }
 
     def _load_history(self):
@@ -177,40 +182,87 @@ class GeminiREPL:
             # Add to context
             self.context.add_message("user", user_input)
 
-            # Get response (tools disabled for now until SDK support is complete)
-            response = self.client.send_message(self.context.get_messages())
+            # Prepare tools if enabled
+            tools = CODEBASE_TOOL_DECLARATIONS if self.tools_enabled else None
 
-            # Handle tool calls if present (disabled for now)
-            # TODO: Re-enable when tool support is properly implemented
-            # if hasattr(response, "candidates") and response.candidates:
-            #     candidate = response.candidates[0]
-            #     if hasattr(candidate.content, "parts"):
-            #         for part in candidate.content.parts:
-            #             if hasattr(part, "function_call") and part.function_call:
-            #                 # Execute tool
-            #                 tool_response = self.tools.execute_tool(
-            #                     part.function_call.name, part.function_call.args
-            #                 )
-            #                 # Add tool response to context
-            #                 self.context.add_tool_response(part.function_call.name, tool_response)
+            # Get response with full conversation history and tools
+            response = self.client.send_message(self.context.get_messages(), tools=tools)
+
+            # Handle tool calls if present
+            final_response = self._handle_tool_calls(response, user_input)
 
             # Extract text response
-            response_text = self._extract_response_text(response)
+            response_text = self._extract_response_text(final_response)
 
             # Add to context
             self.context.add_message("assistant", response_text)
 
             # Display response with metadata
-            self._display_response(response_text, response)
+            self._display_response(response_text, final_response)
 
             # Log response to JSONL
-            metadata = self._extract_metadata(response)
+            metadata = self._extract_metadata(final_response)
             self.jsonl_logger.log_assistant_response(response_text, metadata)
 
         except Exception as e:
             self.logger.error("API request failed", {"error": str(e)})
             self.jsonl_logger.log_error(str(e), {"input": user_input})
             print(f"Error: {e}")
+
+    def _handle_tool_calls(self, response, user_input: str):
+        """Handle tool calls and return final response."""
+        if not self.tools_enabled:
+            return response
+
+        # Check if response contains tool calls
+        if not (hasattr(response, "candidates") and response.candidates):
+            return response
+
+        candidate = response.candidates[0]
+        if not (hasattr(candidate.content, "parts") and candidate.content.parts):
+            return response
+
+        # Look for function calls
+        for part in candidate.content.parts:
+            if hasattr(part, "function_call") and part.function_call:
+                function_call = part.function_call
+                print(f"🔧 Executing tool: {function_call.name}")
+                
+                # Execute the tool
+                try:
+                    result = execute_tool(function_call.name, **function_call.args)
+                    print(f"✅ Tool result: {result[:200]}...")
+                    
+                    # Log tool execution
+                    self.logger.info("Tool executed", {
+                        "tool": function_call.name,
+                        "args": dict(function_call.args),
+                        "result_length": len(result)
+                    })
+                    
+                    # Create function response and get follow-up from AI
+                    from google.genai import types
+                    function_response = types.Part.from_function_response(
+                        name=function_call.name,
+                        response={"result": result}
+                    )
+                    
+                    # Send back to AI for interpretation
+                    follow_up = self.client.send_message([
+                        {"role": "user", "content": user_input},
+                        {"role": "assistant", "content": "I'll use tools to help with that."},
+                    ])
+                    
+                    return follow_up
+                    
+                except Exception as e:
+                    print(f"❌ Tool execution failed: {e}")
+                    self.logger.error("Tool execution failed", {
+                        "tool": function_call.name,
+                        "error": str(e)
+                    })
+
+        return response
 
     def _extract_response_text(self, response) -> str:
         """Extract text from API response."""
@@ -395,6 +447,17 @@ Tool Functions:
 
         if len(sessions) > 10:
             print(f"... and {len(sessions) - 10} more sessions")
+
+    def cmd_toggle_tools(self, args: str):
+        """Toggle tool calling on/off."""
+        self.tools_enabled = not self.tools_enabled
+        status = "ENABLED" if self.tools_enabled else "DISABLED"
+        print(f"Tool calling: {status}")
+        
+        if self.tools_enabled:
+            print("🔧 AI can now read, write, and search files")
+        else:
+            print("💬 AI is now in conversation-only mode")
 
         print("\nTo resume a session: gemini-repl --resume <session-id>")
 
