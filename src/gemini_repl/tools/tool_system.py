@@ -26,7 +26,6 @@ class ToolSystem:
             "list_files": self.list_files,
             "create_directory": self.create_directory,
             "delete_file": self.delete_file,
-            "execute_python": self.execute_python,
         }
 
         if self.enable_self_modify:
@@ -111,20 +110,6 @@ class ToolSystem:
                             }
                         },
                         "required": ["path"],
-                    },
-                ),
-                types.FunctionDeclaration(
-                    name="execute_python",
-                    description="Execute Python code in a sandboxed environment",
-                    parameters={
-                        "type": "object",
-                        "properties": {
-                            "code": {
-                                "type": "string",
-                                "description": "Python code to execute",
-                            }
-                        },
-                        "required": ["code"],
                     },
                 ),
             ]
@@ -262,59 +247,6 @@ class ToolSystem:
         except Exception as e:
             return {"error": f"Failed to delete: {e}"}
 
-    def execute_python(self, code: str) -> Dict[str, Any]:
-        """Execute Python code in a sandboxed environment."""
-        import io
-        import contextlib
-
-        # Create string buffer to capture output
-        output_buffer = io.StringIO()
-        error_buffer = io.StringIO()
-
-        # Create restricted globals
-        safe_globals = {
-            "__builtins__": {
-                "print": print,
-                "len": len,
-                "range": range,
-                "str": str,
-                "int": int,
-                "float": float,
-                "list": list,
-                "dict": dict,
-                "set": set,
-                "tuple": tuple,
-                "bool": bool,
-                "sum": sum,
-                "min": min,
-                "max": max,
-                "abs": abs,
-                "round": round,
-                "sorted": sorted,
-                "enumerate": enumerate,
-                "zip": zip,
-                "map": map,
-                "filter": filter,
-            }
-        }
-
-        try:
-            # Redirect stdout
-            with contextlib.redirect_stdout(output_buffer):
-                with contextlib.redirect_stderr(error_buffer):
-                    exec(code, safe_globals)
-
-            return {
-                "success": True,
-                "output": output_buffer.getvalue(),
-                "error": error_buffer.getvalue(),
-            }
-        except Exception as e:
-            return {
-                "success": False,
-                "output": output_buffer.getvalue(),
-                "error": str(e),
-            }
 
     def modify_source(self, file: str, content: str) -> Dict[str, Any]:
         """Modify the REPL's source code (self-hosting)."""

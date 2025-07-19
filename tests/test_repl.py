@@ -101,10 +101,6 @@ class TestGeminiREPL(unittest.TestCase):
         self.assertIn("files", result)
         self.assertEqual(len(result["files"]), 1)
 
-        # Test Python execution
-        result = tools.execute_python("print('Hello')")
-        self.assertTrue(result.get("success"))
-        self.assertEqual(result.get("output").strip(), "Hello")
 
     @patch("google.generativeai.GenerativeModel")
     def test_repl_commands(self, mock_model):
