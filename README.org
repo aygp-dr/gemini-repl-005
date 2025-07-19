@@ -75,7 +75,6 @@ The REPL includes built-in tools for file operations:
 - ~read_file~ - Read file contents
 - ~write_file~ - Create/update files
 - ~list_files~ - List directory contents
-- ~execute_python~ - Run Python code (sandboxed)
 
 * API Migration Note
 
