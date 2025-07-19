@@ -1,0 +1,31 @@
+Context Fix and Tool Calling Implementation
+
+## Key Prompts Used:
+
+### Context Issue Diagnosis:
+"run all the unit tests again and then scaffold out the integration from the experiment. ensure we have the context working and sending it along with every chat request since this didn't work"
+
+### API Client Fix:
+- Identified API client only sending last message instead of full history
+- Fixed _convert_messages_to_contents() to use proper types.Part(text=content)
+- Added full conversation history support with role mapping
+
+### Tool Calling Implementation:
+- Minimal scope: read_file, write_file, list_files, search_code only
+- Function registry pattern for controlled execution
+- Visual feedback during tool execution
+- /toggle-tools command for runtime control
+
+### Architecture Decisions:
+- GEMINI_TOOLS_ENABLED environment variable (default: true)
+- Tool execution errors handled gracefully with logging
+- Tools integrated into existing context/session management
+- Scope kept intentionally small for safe self-hosting
+
+## Testing Results:
+- Context persistence: ✅ Working across messages
+- Tool execution: ✅ File operations successful
+- Session management: ✅ Named sessions functional
+- Error handling: ✅ Graceful failures
+
+## Next: Enum-based tool restrictions for even tighter scope control
