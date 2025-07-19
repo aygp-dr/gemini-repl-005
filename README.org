@@ -12,6 +12,40 @@
 
 A self-hosting Python REPL with Gemini AI integration, featuring conversation context, tool use, and logging.
 
+#+begin_example
+$ gmake repl
+
+╔══════════════════════════════════════╗
+║      🌟 Gemini REPL v0.1.0 🌟        ║
+║  Python-powered AI conversations     ║
+║  Type /help for available commands   ║
+╚══════════════════════════════════════╝
+
+Session ID: fefc1b4b-57d3-4778-bd5c-c60c87d3562a
+
+> What files are in the src directory?
+
+🔧 Using tool: list_files
+📂 Directory: src/
+  - gemini_repl/ (directory)
+
+The src directory contains one subdirectory called gemini_repl/.
+
+> Read the Makefile and explain the main targets
+
+🔧 Using tool: read_file
+📄 Reading: Makefile
+
+The Makefile includes these main targets:
+- `help`: Shows available commands (default)
+- `setup`: Installs dependencies and sets up environment
+- `test`: Runs the test suite with coverage
+- `lint`: Runs code quality checks
+- `repl`: Launches the Gemini REPL
+
+> /exit
+#+end_example
+
 ** Features
 
 - ✅ *Core REPL Event Loop* - Interactive command-line interface with slash commands
