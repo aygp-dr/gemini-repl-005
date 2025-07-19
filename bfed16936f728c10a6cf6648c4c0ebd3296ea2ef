@@ -1,0 +1,32 @@
+# Observer Finding: Tool Dispatch Inconsistency
+
+## Issue #26: Tool dispatch inconsistency in REPL
+
+### Problem
+The AI doesn't reliably trigger tools when asked to analyze files. Validation script shows only 2/5 prompts triggered tool usage:
+- "What build commands are available?" ✅ (triggered tools)
+- "Check what build files exist..." ✅ (triggered tools)
+- "List all Makefile targets..." ❌ (no tools)
+- "How do I run tests?" ❌ (no tools)
+- "Read the Makefile..." ❌ (no tools despite explicit "Read")
+
+### Validation Results
+All prompts successfully found and listed Makefile targets, but only 40% used tools to do so. The AI sometimes just generates responses from training data instead of reading actual files.
+
+### Potential Causes
+1. Model variability in tool-triggering decisions
+2. Prompt phrasing sensitivity
+3. Temperature/sampling randomness
+4. Tool descriptions might need improvement
+
+### Recommendations
+1. More explicit tool-triggering patterns
+2. Review and improve tool descriptions
+3. Consider prompt engineering to encourage tool use
+4. Add integration tests for tool workflows
+5. May need to adjust system prompts
+
+### Test Script
+experiments/tool-calling/validate_makefile_workflow.py
+
+This inconsistency could affect self-hosting capabilities where accurate file reading is critical.
