@@ -1,0 +1,27 @@
+Session Management Implementation Prompts:
+
+1. User: 'can you run a test. also, the logging should be done using a guid of the conversation / session that could be resumed in the repl with --resume {guid} and it should be reported as jsonl. see the exampels in ~/.claude/projects/*gemini-repl-005/*.jsonl'
+
+2. User: 'before working on the jsonl logger make a gh issue'
+
+3. User: 'run the expect scripts with a new session and a --resume session . allow the repl to take a named session like --name so i don't have to look up the guid . ensure gmake lint test are clean and commit the active work'
+
+4. User: 'first add notes in git notes on the prompts for when i rebuild this repo then continue with fifo'
+
+Key implementation decisions:
+- Used Claude's JSONL format exactly for compatibility
+- Named sessions use deterministic UUIDs via uuid5 namespace
+- Session resumption works with both UUIDs and names
+- Message threading via parentUuid maintains conversation flow
+- Project-specific session storage in ~/.gemini/projects/
+- /sessions command for session management within REPL
+- --list-sessions CLI flag for external session viewing
+
+Technical approach:
+- SessionManager class handles UUID generation and JSONL logging
+- PathManager updated to support session file paths
+- JSONLLogger integrated with SessionManager for dual logging
+- CLI argument parsing extended for session management
+- Comprehensive testing including expect scripts for TTY interaction
+
+Result: Full session management system compatible with Claude's format, enabling conversation resumption and cross-tool analysis.
