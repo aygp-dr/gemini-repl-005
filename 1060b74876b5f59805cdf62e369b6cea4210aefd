@@ -1,0 +1,26 @@
+Command files creation context:
+
+Prompts:
+- User: 'Hey Builder\! The Observer has created new command files for us...'
+- Request to commit .claude/commands/builder.md and observer.md
+- Rename observe.md to observer.md for consistency
+
+Purpose:
+- Create clear separation between Builder (implementation) and Observer (analysis) modes
+- Provide context when starting Claude Code sessions
+- Support different types of development work
+
+Issues addressed:
+- Issue #10: Integrate new Claude commands
+
+Testing:
+- Files were created by Observer agent
+- No runtime testing needed (documentation files)
+
+Timing:
+- Created after SDK migration work
+- Part of improving developer experience
+
+Pre-commit hooks:
+- Added newlines at end of files automatically
+- TODO warning for builder.md (expected)
