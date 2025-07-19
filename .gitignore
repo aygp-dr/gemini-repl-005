@@ -78,3 +78,10 @@ logs/
 
 # Generated documentation
 README.md
+
+# Test files generated during development
+test-*.txt
+*-test.txt
+hello.txt
+date.txt
+integration-test.py
