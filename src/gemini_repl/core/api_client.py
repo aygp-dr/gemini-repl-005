@@ -79,12 +79,31 @@ class GeminiClient:
         """Convert message history to Gemini Content format."""
         contents = []
         
+        # Prepend system messages to the first user message
+        system_prompts = []
         for msg in messages:
+            if msg["role"] == "system":
+                system_prompts.append(msg["content"])
+        
+        for msg in messages:
+            if msg["role"] == "system":
+                continue  # Skip system messages, they're handled above
+                
             role = "user" if msg["role"] == "user" else "model"
-            content = types.Content(
-                role=role,
-                parts=[types.Part(text=msg["content"])]
-            )
+            
+            # Prepend system prompt to first user message
+            if role == "user" and system_prompts and not contents:
+                combined_content = "\n\n".join(system_prompts + [msg["content"]])
+                content = types.Content(
+                    role=role,
+                    parts=[types.Part(text=combined_content)]
+                )
+                system_prompts = []  # Clear after using
+            else:
+                content = types.Content(
+                    role=role,
+                    parts=[types.Part(text=msg["content"])]
+                )
             contents.append(content)
         
         return contents

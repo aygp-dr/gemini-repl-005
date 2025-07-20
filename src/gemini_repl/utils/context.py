@@ -29,6 +29,10 @@ class ContextManager:
 
         # Load existing context if available
         self._load_context()
+        
+        # Load system prompt if starting fresh
+        if not self.messages:
+            self._load_system_prompt()
 
     def _load_context(self):
         """Load context from file if it exists."""
@@ -40,6 +44,25 @@ class ContextManager:
             except (FileNotFoundError, json.JSONDecodeError):
                 pass
 
+    def _load_system_prompt(self):
+        """Load system prompt from resources."""
+        # Try multiple locations for the system prompt
+        prompt_locations = [
+            Path(__file__).parent.parent.parent / "resources" / "system_prompt.txt",
+            Path.cwd() / "resources" / "system_prompt.txt",
+            Path(os.getenv("GEMINI_SYSTEM_PROMPT", "")),
+        ]
+        
+        for prompt_path in prompt_locations:
+            if prompt_path and prompt_path.exists():
+                try:
+                    system_prompt = prompt_path.read_text().strip()
+                    if system_prompt:
+                        self.add_message("system", system_prompt)
+                        return
+                except Exception:
+                    pass
+    
     def _save_context(self):
         """Save context to file."""
         data = {
@@ -124,8 +147,10 @@ class ContextManager:
             self.session_start = datetime.now()  # Reset session start
 
     def clear(self):
-        """Clear the conversation context."""
-        self.messages = []
+        """Clear the conversation context, preserving system prompt."""
+        # Keep system messages
+        system_messages = [msg for msg in self.messages if msg["role"] == "system"]
+        self.messages = system_messages
         self._save_context()
 
 
