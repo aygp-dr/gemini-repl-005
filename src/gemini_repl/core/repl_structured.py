@@ -88,7 +88,7 @@ class StructuredGeminiREPL(GeminiREPL):
 
             # Check if the response contains additional tool calls
             final_response = self._handle_tool_calls(response, user_input)
-            
+
             # Extract and display response
             response_text = self._extract_response_text(final_response)
             self.context.add_message("assistant", response_text)

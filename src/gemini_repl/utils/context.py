@@ -29,7 +29,7 @@ class ContextManager:
 
         # Load existing context if available
         self._load_context()
-        
+
         # Load system prompt if starting fresh
         if not self.messages:
             self._load_system_prompt()
@@ -52,7 +52,7 @@ class ContextManager:
             Path.cwd() / "resources" / "system_prompt.txt",
             Path(os.getenv("GEMINI_SYSTEM_PROMPT", "")),
         ]
-        
+
         for prompt_path in prompt_locations:
             if prompt_path and prompt_path.exists():
                 try:
@@ -62,7 +62,7 @@ class ContextManager:
                         return
                 except Exception:
                     pass
-    
+
     def _save_context(self):
         """Save context to file."""
         data = {

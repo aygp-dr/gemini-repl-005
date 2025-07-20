@@ -247,7 +247,6 @@ class ToolSystem:
         except Exception as e:
             return {"error": f"Failed to delete: {e}"}
 
-
     def modify_source(self, file: str, content: str) -> Dict[str, Any]:
         """Modify the REPL's source code (self-hosting)."""
         if not self.enable_self_modify:

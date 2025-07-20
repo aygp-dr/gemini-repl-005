@@ -101,7 +101,6 @@ class TestGeminiREPL(unittest.TestCase):
         self.assertIn("files", result)
         self.assertEqual(len(result["files"]), 1)
 
-
     @patch("google.generativeai.GenerativeModel")
     def test_repl_commands(self, mock_model):
         """Test REPL slash commands."""

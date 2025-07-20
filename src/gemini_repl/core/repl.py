@@ -52,7 +52,7 @@ class GeminiREPL:
         self.tools = ToolSystem(self)
         self.running = True
         self.commands = self._init_commands()
-        
+
         # Tool calling enabled by default
         self.tools_enabled = os.getenv("GEMINI_TOOLS_ENABLED", "true").lower() == "true"
 
@@ -110,6 +110,7 @@ class GeminiREPL:
     def _display_banner(self):
         """Display the REPL banner."""
         from gemini_repl import __version__
+
         banner = f"""
 ╔══════════════════════════════════════╗
 ║      🌟 Gemini REPL v{__version__} 🌟        ║
@@ -232,34 +233,38 @@ class GeminiREPL:
             if hasattr(part, "function_call") and part.function_call:
                 function_call = part.function_call
                 print(f"🔧 Executing tool: {function_call.name}")
-                
+
                 # Execute the tool
                 try:
                     result = execute_tool(function_call.name, **function_call.args)
                     print(f"✅ Tool result: {result[:200]}...")
-                    
+
                     # Log tool execution
-                    self.logger.info("Tool executed", {
-                        "tool": function_call.name,
-                        "args": dict(function_call.args),
-                        "result_length": len(result)
-                    })
-                    
+                    self.logger.info(
+                        "Tool executed",
+                        {
+                            "tool": function_call.name,
+                            "args": dict(function_call.args),
+                            "result_length": len(result),
+                        },
+                    )
+
                     # Tool response is handled by API client
                     # The result will be sent back to AI for interpretation
-                    follow_up = self.client.send_message([
-                        {"role": "user", "content": user_input},
-                        {"role": "assistant", "content": "I'll use tools to help with that."},
-                    ])
-                    
+                    follow_up = self.client.send_message(
+                        [
+                            {"role": "user", "content": user_input},
+                            {"role": "assistant", "content": "I'll use tools to help with that."},
+                        ]
+                    )
+
                     return follow_up
-                    
+
                 except Exception as e:
                     print(f"❌ Tool execution failed: {e}")
-                    self.logger.error("Tool execution failed", {
-                        "tool": function_call.name,
-                        "error": str(e)
-                    })
+                    self.logger.error(
+                        "Tool execution failed", {"tool": function_call.name, "error": str(e)}
+                    )
 
         return response
 
@@ -452,7 +457,7 @@ Tool Functions:
         self.tools_enabled = not self.tools_enabled
         status = "ENABLED" if self.tools_enabled else "DISABLED"
         print(f"Tool calling: {status}")
-        
+
         if self.tools_enabled:
             print("🔧 AI can now read, write, and search files")
         else:

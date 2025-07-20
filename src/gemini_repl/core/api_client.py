@@ -25,7 +25,7 @@ class GeminiClient:
         # Use model with best rate limits for free tier (30 RPM)
         # See docs/RATE_LIMITS.md for details
         self.model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-lite")
-        
+
         # Initialize rate limiter
         self.rate_limiter = GlobalRateLimiter.get_limiter(self.model_name)
 
@@ -47,20 +47,18 @@ class GeminiClient:
 
         # Check rate limit before making request
         self.rate_limiter.wait_with_display()
-        
+
         # Retry logic for rate limits
         max_retries = 3
         retry_delay = 10  # seconds
-        
+
         for attempt in range(max_retries):
             try:
                 # Record the request
                 self.rate_limiter.record_request()
-                
+
                 response = self.client.models.generate_content(
-                    model=self.model_name,
-                    contents=contents,
-                    config=config
+                    model=self.model_name, contents=contents, config=config
                 )
                 return response
 
@@ -78,34 +76,28 @@ class GeminiClient:
     def _convert_messages_to_contents(self, messages: List[Dict[str, str]]) -> List[types.Content]:
         """Convert message history to Gemini Content format."""
         contents = []
-        
+
         # Prepend system messages to the first user message
         system_prompts = []
         for msg in messages:
             if msg["role"] == "system":
                 system_prompts.append(msg["content"])
-        
+
         for msg in messages:
             if msg["role"] == "system":
                 continue  # Skip system messages, they're handled above
-                
+
             role = "user" if msg["role"] == "user" else "model"
-            
+
             # Prepend system prompt to first user message
             if role == "user" and system_prompts and not contents:
                 combined_content = "\n\n".join(system_prompts + [msg["content"]])
-                content = types.Content(
-                    role=role,
-                    parts=[types.Part(text=combined_content)]
-                )
+                content = types.Content(role=role, parts=[types.Part(text=combined_content)])
                 system_prompts = []  # Clear after using
             else:
-                content = types.Content(
-                    role=role,
-                    parts=[types.Part(text=msg["content"])]
-                )
+                content = types.Content(role=role, parts=[types.Part(text=msg["content"])])
             contents.append(content)
-        
+
         return contents
 
     def _convert_messages(self, messages: List[Dict[str, str]]) -> List[str]:
