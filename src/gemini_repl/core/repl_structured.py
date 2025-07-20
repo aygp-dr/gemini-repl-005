@@ -86,13 +86,16 @@ class StructuredGeminiREPL(GeminiREPL):
                 # No tools needed, proceed normally
                 response = self.client.send_message(self.context.get_messages())
 
+            # Check if the response contains additional tool calls
+            final_response = self._handle_tool_calls(response, user_input)
+            
             # Extract and display response
-            response_text = self._extract_response_text(response)
+            response_text = self._extract_response_text(final_response)
             self.context.add_message("assistant", response_text)
-            self._display_response(response_text, response)
+            self._display_response(response_text, final_response)
 
             # Log response with decision metadata
-            metadata = self._extract_metadata(response)
+            metadata = self._extract_metadata(final_response)
             metadata["tool_decision"] = {
                 "required": decision.requires_tool_call,
                 "tool": decision.tool_name,
@@ -192,7 +195,8 @@ The file operation is complete. Here's a summary:"""
 
     def _handle_stats(self):
         """Enhanced stats including decision engine metrics."""
-        super()._handle_stats()
+        # Call parent's cmd_stats instead of _handle_stats
+        self.cmd_stats("")
 
         if self.structured_dispatch and self.decision_engine:
             print("\n📊 Tool Decision Stats:")
