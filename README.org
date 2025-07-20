@@ -46,6 +46,12 @@ The Makefile includes these main targets:
 > /exit
 #+end_example
 
+** Recent Improvements (2025-07-20)
+
+- *Fixed Tool Chaining*: The AI now automatically executes multiple tools to complete complex queries
+- *System Prompts*: Added automatic system prompts that guide the AI to use tools proactively
+- *Rate Limiting*: Visual countdown prevents API exhaustion with per-model limits
+
 ** Features
 
 - ✅ *Interactive REPL* - Command-line interface with slash commands
@@ -135,7 +141,7 @@ This project demonstrates key concepts in building AI-powered developer tools:
 
 - [[https://ai.google.dev/gemini-api/docs][Gemini API Documentation]]
 - [[https://github.com/aygp-dr/gemini-repl-005/issues][Project Issues]] - Real challenges and solutions
-- [[experiments/][Experiments Directory]] - Test scripts and explorations
+- [[./experiments/][Experiments Directory]] - Test scripts and explorations
 
 * Development
 
