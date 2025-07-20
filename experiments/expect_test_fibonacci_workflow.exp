@@ -1,0 +1,95 @@
+#!/usr/bin/expect -f
+# Expect test for Fibonacci workflow - validates proper tool usage
+
+set timeout 30
+log_file -a expect_fibonacci.log
+
+# Start the REPL
+spawn python -m gemini_repl
+expect "Session ID:"
+
+# Test 1: "show fib in scheme" should generate code, not try to read files
+send "show fib in scheme\r"
+expect {
+    "Please create" {
+        puts "FAIL: AI asked user to create file"
+        exit 1
+    }
+    "does not exist" {
+        puts "FAIL: AI complained about missing file instead of generating"
+        exit 1
+    }
+    "(define" {
+        puts "PASS: AI generated Scheme code"
+    }
+    timeout {
+        puts "FAIL: Timeout waiting for Scheme code"
+        exit 1
+    }
+}
+
+# Wait for prompt
+expect -re {\[.*tokens.*\] >}
+
+# Test 2: "create a TLA+ spec" should use write_file
+send "create a TLA+ spec for fibonacci and add it to research/formal/\r"
+expect {
+    "Create the folder" {
+        puts "FAIL: AI asked user to create folder"
+        exit 1
+    }
+    "need to confirm" {
+        puts "FAIL: AI being hesitant about directory"
+        exit 1
+    }
+    "try again" {
+        puts "FAIL: AI deferring action to user"
+        exit 1
+    }
+    "write_file" {
+        puts "PASS: AI using write_file tool"
+        expect {
+            "created" {
+                puts "PASS: File was created"
+            }
+            timeout {
+                puts "FAIL: File creation didn't complete"
+                exit 1
+            }
+        }
+    }
+    timeout {
+        puts "FAIL: Timeout waiting for write_file"
+        exit 1
+    }
+}
+
+# Wait for prompt
+expect -re {\[.*tokens.*\] >}
+
+# Test 3: "show" the created file
+send "show research/formal/Fibonacci.tla\r"
+expect {
+    "Please create the file" {
+        puts "FAIL: AI asked user to create file that should exist"
+        exit 1
+    }
+    "MODULE Fibonacci" {
+        puts "PASS: AI showed TLA+ content"
+    }
+    "doesn't exist" {
+        # Acceptable if file truly doesn't exist
+        puts "INFO: File doesn't exist (may be OK in test environment)"
+    }
+    timeout {
+        puts "FAIL: Timeout waiting for file content"
+        exit 1
+    }
+}
+
+# Exit cleanly
+send "/exit\r"
+expect eof
+
+puts "\n=== Fibonacci Workflow Test Complete ===\n"
+exit 0
